@@ -17,6 +17,11 @@
 // *************************************************************************
 `include "open_nic_shell_macros.vh"
 `timescale 1ns/1ps
+
+import rule_pkg::*;
+import config_reg_pkg::*;
+import packet_pkg::*;
+
 module p2p_250mhz #(
   parameter int NUM_QDMA = 1,
   parameter int NUM_INTF = 1
@@ -105,12 +110,15 @@ module p2p_250mhz #(
   );
 
   generate if (NUM_QDMA <= 1) begin
-    axi_lite_slave #(
-      .REG_ADDR_W (12),
+    // Configuration register signal
+    cfg_reg_t cfg_reg;
+
+    csr_filter_rx_pipeline #(
+      .ADDR_WIDTH (12),
       .REG_PREFIX (16'hB000)
-    ) reg_inst (
+    ) csr_filter_rx_pipeline_inst (
       .s_axil_awvalid (s_axil_awvalid),
-      .s_axil_awaddr  (s_axil_awaddr),
+      .s_axil_awaddr  (s_axil_awaddr[11:0]),
       .s_axil_awready (s_axil_awready),
       .s_axil_wvalid  (s_axil_wvalid),
       .s_axil_wdata   (s_axil_wdata),
@@ -119,12 +127,14 @@ module p2p_250mhz #(
       .s_axil_bresp   (s_axil_bresp),
       .s_axil_bready  (s_axil_bready),
       .s_axil_arvalid (s_axil_arvalid),
-      .s_axil_araddr  (s_axil_araddr),
+      .s_axil_araddr  (s_axil_araddr[11:0]),
       .s_axil_arready (s_axil_arready),
       .s_axil_rvalid  (s_axil_rvalid),
       .s_axil_rdata   (s_axil_rdata),
       .s_axil_rresp   (s_axil_rresp),
       .s_axil_rready  (s_axil_rready),
+
+      .filter_rules        (cfg_reg.filter_rules),
 
       .aclk           (axil_aclk),
       .aresetn        (axil_aresetn)
@@ -279,7 +289,7 @@ module p2p_250mhz #(
         .aresetn       (axil_aresetn)
       );
 
-      axi_stream_pipeline rx_ppl_inst (
+      filter_rx_pipeline rx_filter_inst (
         .s_axis_tvalid (s_axis_adap_rx_250mhz_tvalid[i]),
         .s_axis_tdata  (s_axis_adap_rx_250mhz_tdata[`getvec(512, i)]),
         .s_axis_tkeep  (s_axis_adap_rx_250mhz_tkeep[`getvec(64, i)]),
@@ -293,6 +303,8 @@ module p2p_250mhz #(
         .m_axis_tlast  (m_axis_qdma_c2h_tlast[i]),
         .m_axis_tuser  (axis_qdma_c2h_tuser),
         .m_axis_tready (m_axis_qdma_c2h_tready[i]),
+
+        .cfg_reg       (filter_cfg),
 
         .aclk          (axis_aclk),
         .aresetn       (axil_aresetn)
