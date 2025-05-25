@@ -5,6 +5,8 @@
 //
 // *************************************************************************
 
+`timescale 1ns / 1ps
+
 package cfg_reg_pkg;
 
     // Rule structure definition
@@ -38,19 +40,25 @@ package cfg_reg_pkg;
 
     // Register offsets for each rule field (word addresses)
     // Rule 0: 6 registers
-    parameter int RULE0_IPV4_OFFSET    = 10'h000;
-    parameter int RULE0_IPV6_0_OFFSET  = 10'h001;
-    parameter int RULE0_IPV6_1_OFFSET  = 10'h002;
-    parameter int RULE0_IPV6_2_OFFSET  = 10'h003;
-    parameter int RULE0_IPV6_3_OFFSET  = 10'h004;
-    parameter int RULE0_PORT_OFFSET    = 10'h005;
+    parameter int RULE0_IPV4_OFFSET    = 'h000;
+    parameter int RULE0_IPV6_0_OFFSET  = 'h001;
+    parameter int RULE0_IPV6_1_OFFSET  = 'h002;
+    parameter int RULE0_IPV6_2_OFFSET  = 'h003;
+    parameter int RULE0_IPV6_3_OFFSET  = 'h004;
+    parameter int RULE0_PORT_OFFSET    = 'h005;
 
     // Rule 1: 6 registers
-    parameter int RULE1_IPV4_OFFSET    = 10'h006;
-    parameter int RULE1_IPV6_0_OFFSET  = 10'h007;
-    parameter int RULE1_IPV6_1_OFFSET  = 10'h008;
-    parameter int RULE1_IPV6_2_OFFSET  = 10'h009;
-    parameter int RULE1_IPV6_3_OFFSET  = 10'h00A;
-    parameter int RULE1_PORT_OFFSET    = 10'h00B;
+    parameter int RULE1_IPV4_OFFSET    = 'h006;
+    parameter int RULE1_IPV6_0_OFFSET  = 'h007;
+    parameter int RULE1_IPV6_1_OFFSET  = 'h008;
+    parameter int RULE1_IPV6_2_OFFSET  = 'h009;
+    parameter int RULE1_IPV6_3_OFFSET  = 'h00A;
+    parameter int RULE1_PORT_OFFSET    = 'h00B;
+
+    // Counter registers (read-only)
+    parameter int RULE0_HIT_COUNT_OFFSET = 'h00C;
+    parameter int RULE1_HIT_COUNT_OFFSET = 'h00D;
+    parameter int TOTAL_PKT_COUNT_OFFSET = 'h00E;
+    parameter int DROP_PKT_COUNT_OFFSET  = 'h00F;
 
 endpackage

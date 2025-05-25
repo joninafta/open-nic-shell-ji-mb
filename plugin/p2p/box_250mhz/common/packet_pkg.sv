@@ -6,6 +6,8 @@
 //
 // *************************************************************************
 
+`timescale 1ns / 1ps
+
 package packet_pkg;
 
     // Ethernet header structure (14 bytes)
