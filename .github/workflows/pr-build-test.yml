@@ -88,7 +88,7 @@ jobs:
       working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
       run: |
         echo "Running full regression suite..."
-        python3 run_tests.py regression
+        python3 run_tests.py -r
         
     - name: Run Individual Test
       if: ${{ github.event.inputs.test_type == 'individual' }}
