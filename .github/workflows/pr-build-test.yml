@@ -192,21 +192,3 @@ jobs:
       run: |
         echo "Checking SystemVerilog syntax..."
         find plugin/p2p/box_250mhz/filter_rx_pipeline -name "*.sv" -exec verilator --lint-only {} \; || echo "SystemVerilog syntax check completed"
-
-  security-scan:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Run basic security checks
-      run: |
-        echo "Running basic security checks..."
-        # Check for sensitive files
-        find . -name "*.key" -o -name "*.pem" -o -name "*.p12" | head -5
-        
-        # Check for hardcoded credentials (basic check)
-        grep -r -i "password\|secret\|key" plugin/p2p/box_250mhz/filter_rx_pipeline/ | grep -v ".git" | head -5 || echo "No obvious credential issues found"
-        
-        echo "Security scan completed"
