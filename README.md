@@ -562,6 +562,10 @@ left.  Enter "100G" in the search box.  You will see "UltraScale+ Integrated
 able to find it in the "Certificate Based Licenses" table. Select it and click
 "Generate Node-Locked License". A screenshot could be found ![here](vivado_cmac.png).
 
+## Documentation
+
+For detailed information about the filter RX pipeline implementation, please refer to the [Filter RX Pipeline Implementation Documentation](doc/filter_rx_pipeline_implementation.md).
+
 ---
 
 # Copyright Notice and Disclaimer
