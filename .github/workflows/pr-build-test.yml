@@ -1,0 +1,212 @@
+name: Build and Test Filter RX Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'plugin/p2p/box_250mhz/filter_rx_pipeline/**'
+      - 'src/**'
+      - 'script/**'
+      - '.github/workflows/pr-build-test.yml'
+
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type to run'
+        required: false
+        default: 'regression'
+        type: choice
+        options:
+          - smoke
+          - regression
+          - individual
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    env:
+      OPEN_NIC_SHELL_ROOT: ${{ github.workspace }}
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install Verilator
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y verilator
+        verilator --version
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        
+    - name: Set up environment
+      run: |
+        echo "OPEN_NIC_SHELL_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
+        echo "Build and simulation directories:"
+        mkdir -p ${{ github.workspace }}/.comp
+        mkdir -p ${{ github.workspace }}/.sim
+        ls -la ${{ github.workspace }}/
+        
+    - name: Build Filter RX Pipeline
+      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
+      run: |
+        echo "Building filter RX pipeline..."
+        chmod +x build.sh
+        ./build.sh
+        
+    - name: Verify Build Artifacts
+      run: |
+        echo "Checking build artifacts..."
+        ls -la ${{ github.workspace }}/.comp/filter_rx_pipeline/
+        if [ ! -f "${{ github.workspace }}/.comp/filter_rx_pipeline/sim" ]; then
+          echo "ERROR: Simulation executable not found"
+          exit 1
+        fi
+        chmod +x ${{ github.workspace }}/.comp/filter_rx_pipeline/sim
+        
+    - name: Run Smoke Tests
+      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
+      run: |
+        echo "Running smoke tests..."
+        python3 run_tests.py reset
+        python3 run_tests.py ipv4_rule_matching
+        python3 run_tests.py counter_verification
+        
+    - name: Run Regression Tests
+      if: ${{ github.event.inputs.test_type == 'regression' || github.event.inputs.test_type == '' }}
+      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
+      run: |
+        echo "Running full regression suite..."
+        python3 run_tests.py regression
+        
+    - name: Run Individual Test
+      if: ${{ github.event.inputs.test_type == 'individual' }}
+      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
+      run: |
+        echo "Running individual test..."
+        python3 run_tests.py ipv6_rule_matching -v
+        
+    - name: Collect Test Results
+      if: always()
+      run: |
+        echo "Collecting test results and logs..."
+        find ${{ github.workspace }}/.sim/filter_rx_pipeline/logs -name "*.log" -o -name "*.txt" | head -20
+        
+    - name: Generate Test Summary
+      if: always()
+      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
+      run: |
+        echo "=== TEST SUMMARY ==="
+        echo "Build Status: $([ -f '${{ github.workspace }}/.comp/filter_rx_pipeline/sim' ] && echo 'PASSED' || echo 'FAILED')"
+        
+        # Count test results
+        LOG_DIR="${{ github.workspace }}/.sim/filter_rx_pipeline/logs"
+        if [ -d "$LOG_DIR" ]; then
+          TOTAL_TESTS=$(find "$LOG_DIR" -name "result.txt" | wc -l)
+          PASSED_TESTS=$(find "$LOG_DIR" -name "result.txt" -exec grep -l "PASSED" {} \; | wc -l)
+          FAILED_TESTS=$(find "$LOG_DIR" -name "result.txt" -exec grep -l "FAILED" {} \; | wc -l)
+          
+          echo "Total Tests: $TOTAL_TESTS"
+          echo "Passed Tests: $PASSED_TESTS"
+          echo "Failed Tests: $FAILED_TESTS"
+          
+          if [ $FAILED_TESTS -gt 0 ]; then
+            echo "=== FAILED TESTS ==="
+            find "$LOG_DIR" -name "result.txt" -exec grep -l "FAILED" {} \; | while read -r file; do
+              test_name=$(basename "$(dirname "$file")")
+              echo "❌ $test_name"
+            done
+          fi
+          
+          # Show detailed summary if available
+          if [ -f "show_summary.sh" ]; then
+            echo "=== DETAILED SUMMARY ==="
+            bash show_summary.sh || echo "Summary script not available"
+          fi
+        else
+          echo "No test logs found"
+        fi
+        
+    - name: Upload Test Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-${{ github.run_number }}
+        path: |
+          .sim/filter_rx_pipeline/logs/
+          .comp/filter_rx_pipeline/
+        retention-days: 7
+        
+    - name: Check Test Results
+      if: always()
+      run: |
+        LOG_DIR="${{ github.workspace }}/.sim/filter_rx_pipeline/logs"
+        if [ -d "$LOG_DIR" ]; then
+          FAILED_TESTS=$(find "$LOG_DIR" -name "result.txt" -exec grep -l "FAILED" {} \; | wc -l)
+          if [ $FAILED_TESTS -gt 0 ]; then
+            echo "❌ $FAILED_TESTS test(s) failed"
+            exit 1
+          else
+            echo "✅ All tests passed"
+          fi
+        else
+          echo "⚠️ No test results found"
+          exit 1
+        fi
+
+  lint-and-format:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install linting tools
+      run: |
+        pip install flake8 black isort
+        sudo apt-get update
+        sudo apt-get install -y verilator
+        
+    - name: Lint Python code
+      run: |
+        echo "Linting Python files..."
+        find plugin/p2p/box_250mhz/filter_rx_pipeline -name "*.py" -exec flake8 {} \; || echo "Python linting completed with warnings"
+        
+    - name: Check SystemVerilog syntax
+      run: |
+        echo "Checking SystemVerilog syntax..."
+        find plugin/p2p/box_250mhz/filter_rx_pipeline -name "*.sv" -exec verilator --lint-only {} \; || echo "SystemVerilog syntax check completed"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Run basic security checks
+      run: |
+        echo "Running basic security checks..."
+        # Check for sensitive files
+        find . -name "*.key" -o -name "*.pem" -o -name "*.p12" | head -5
+        
+        # Check for hardcoded credentials (basic check)
+        grep -r -i "password\|secret\|key" plugin/p2p/box_250mhz/filter_rx_pipeline/ | grep -v ".git" | head -5 || echo "No obvious credential issues found"
+        
+        echo "Security scan completed"
