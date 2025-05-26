@@ -79,6 +79,8 @@ class PacketFilteringScoreboard:
             return self._generate_ipv6_focused_mix()
         elif test_name in ["performance_stress", "stress_test"]:
             return self._generate_stress_test_mix()
+        elif test_name in ["back_to_back_stress", "extreme_stress"]:
+            return self._generate_back_to_back_stress_mix()
         elif test_name in ["comprehensive_filtering", "comprehensive"]:
             return self._generate_comprehensive_mix()
         else:
@@ -159,6 +161,28 @@ class PacketFilteringScoreboard:
         self.total_packets_generated = 5000
         
         ipv4_count = int(self.total_packets_generated * 0.6)
+        ipv6_count = self.total_packets_generated - ipv4_count
+        
+        for i in range(ipv4_count):
+            pkt = self._create_ipv4_packet(i)
+            packets.append(pkt)
+            self._predict_filter_outcome(pkt)
+            
+        for i in range(ipv6_count):
+            pkt = self._create_ipv6_packet(i)
+            packets.append(pkt)
+            self._predict_filter_outcome(pkt)
+            
+        self.ipv4_packets_generated = ipv4_count
+        self.ipv6_packets_generated = ipv6_count
+        return packets
+    
+    def _generate_back_to_back_stress_mix(self):
+        """Extreme back-to-back stress test: 10000 packets, zero gaps"""
+        packets = []
+        self.total_packets_generated = 10000
+        
+        ipv4_count = int(self.total_packets_generated * 0.65)
         ipv6_count = self.total_packets_generated - ipv4_count
         
         for i in range(ipv4_count):
@@ -396,6 +420,7 @@ class TestRunner:
             "packet_drop_behavior",
             "multi_packet_stream",
             "back_to_back_packets",
+            "back_to_back_stress",
             "pipeline_stall_recovery",
             "comprehensive_filtering",
             "performance_stress",
@@ -412,9 +437,10 @@ class TestRunner:
             "packet_drop_behavior": "Packet dropping when no rules match",
             "multi_packet_stream": "Multiple packet processing",
             "back_to_back_packets": "Back-to-back packet handling",
+            "back_to_back_stress": "Extreme back-to-back stress test with 10000 packets",
             "pipeline_stall_recovery": "Pipeline stall and recovery behavior",
             "comprehensive_filtering": "Comprehensive filtering test suite",
-            "performance_stress": "High-throughput performance testing",
+            "performance_stress": "High-throughput stress test with 5000 back-to-back packets",
         }
     
     def show_usage(self):
