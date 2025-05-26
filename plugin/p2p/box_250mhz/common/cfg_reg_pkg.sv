@@ -19,18 +19,18 @@ package cfg_reg_pkg;
     // Array of two rules
     typedef rule_t [1:0] rule_array_t;
 
-    // Counters structure
+    // Status register structure (formerly counters)
     typedef struct packed {
         logic [31:0] rule0_hit_count;
         logic [31:0] rule1_hit_count;
         logic [31:0] total_packets;
         logic [31:0] dropped_packets;
-    } counters_t;
+    } status_reg_t;
 
     // Configuration register structure
     typedef struct packed {
         rule_array_t filter_rules;   // Array of filtering rules
-        counters_t   counters;       // Packet counters
+        status_reg_t status;         // Status/counter registers
     } cfg_reg_t;
 
     // Constants
@@ -55,7 +55,7 @@ package cfg_reg_pkg;
     parameter int RULE1_IPV6_3_OFFSET  = 'h00A;
     parameter int RULE1_PORT_OFFSET    = 'h00B;
 
-    // Counter registers (read-only)
+    // Status registers (read-only)
     parameter int RULE0_HIT_COUNT_OFFSET = 'h00C;
     parameter int RULE1_HIT_COUNT_OFFSET = 'h00D;
     parameter int TOTAL_PKT_COUNT_OFFSET = 'h00E;

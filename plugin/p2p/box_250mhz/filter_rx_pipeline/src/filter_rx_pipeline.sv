@@ -37,7 +37,7 @@ module filter_rx_pipeline (
     // Configuration register input
     input  cfg_reg_t   cfg_reg,
 
-    // Configuration register output (counters)
+    // Configuration register output (status)
     output cfg_reg_t   cfg_reg_out,
 
     // Clock and Reset
@@ -69,17 +69,17 @@ module filter_rx_pipeline (
     reg        p2_tlast;
     reg [47:0] p2_tuser;
 
-    // Packet counters
+    // Packet status counters
     reg [31:0] rule0_hit_count;
     reg [31:0] rule1_hit_count;
     reg [31:0] total_packets;
     reg [31:0] dropped_packets;
 
-    // Assign counters to output
-    assign cfg_reg_out.counters.rule0_hit_count = rule0_hit_count;
-    assign cfg_reg_out.counters.rule1_hit_count = rule1_hit_count;
-    assign cfg_reg_out.counters.total_packets = total_packets;
-    assign cfg_reg_out.counters.dropped_packets = dropped_packets;
+    // Assign status registers to output
+    assign cfg_reg_out.status.rule0_hit_count = rule0_hit_count;
+    assign cfg_reg_out.status.rule1_hit_count = rule1_hit_count;
+    assign cfg_reg_out.status.total_packets = total_packets;
+    assign cfg_reg_out.status.dropped_packets = dropped_packets;
     
     // Pass through input configuration to output
     assign cfg_reg_out.filter_rules = cfg_reg.filter_rules;
@@ -175,7 +175,7 @@ module filter_rx_pipeline (
         end
     end
 
-    // Packet counters
+    // Packet status counters
     always @(posedge aclk) begin
         if (!aresetn) begin
             rule0_hit_count <= 32'h0;

@@ -148,11 +148,11 @@ module csr_filter_rx_pipeline #(
                             RULE1_IPV6_2_OFFSET:  read_data <= cfg_reg_internal.filter_rules[1].ipv6_addr[95:64];
                             RULE1_IPV6_3_OFFSET:  read_data <= cfg_reg_internal.filter_rules[1].ipv6_addr[127:96];
                             RULE1_PORT_OFFSET:    read_data <= cfg_reg_internal.filter_rules[1].port;
-                            // Counter registers (read-only from external cfg_reg input)
-                            RULE0_HIT_COUNT_OFFSET: read_data <= cfg_reg.counters.rule0_hit_count;
-                            RULE1_HIT_COUNT_OFFSET: read_data <= cfg_reg.counters.rule1_hit_count;
-                            TOTAL_PKT_COUNT_OFFSET: read_data <= cfg_reg.counters.total_packets;
-                            DROP_PKT_COUNT_OFFSET:  read_data <= cfg_reg.counters.dropped_packets;
+                            // Status registers (read-only from external cfg_reg input)
+                            RULE0_HIT_COUNT_OFFSET: read_data <= cfg_reg.status.rule0_hit_count;
+                            RULE1_HIT_COUNT_OFFSET: read_data <= cfg_reg.status.rule1_hit_count;
+                            TOTAL_PKT_COUNT_OFFSET: read_data <= cfg_reg.status.total_packets;
+                            DROP_PKT_COUNT_OFFSET:  read_data <= cfg_reg.status.dropped_packets;
                             default: read_data <= 32'h0;
                         endcase
                     end
