@@ -259,7 +259,7 @@ module filter_rx_pipeline #(
     end
 
     // Output assignments
-    assign m_axis_tvalid = p1_tvalid;
+    assign m_axis_tvalid = p2_tvalid;
     assign m_axis_tdata = p2_tdata;
     assign m_axis_tkeep = p2_tkeep;
     assign m_axis_tlast = p2_tlast;
