@@ -75,28 +75,13 @@ jobs:
         fi
         chmod +x ${{ github.workspace }}/.comp/filter_rx_pipeline/sim
         
-    - name: Run Smoke Tests
-      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
-      run: |
-        echo "Running smoke tests..."
-        python3 run_tests.py reset
-        python3 run_tests.py ipv4_rule_matching
-        python3 run_tests.py counter_verification
-        
     - name: Run Regression Tests
       if: ${{ github.event.inputs.test_type == 'regression' || github.event.inputs.test_type == '' }}
       working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
       run: |
         echo "Running full regression suite..."
         python3 run_tests.py -r
-        
-    - name: Run Individual Test
-      if: ${{ github.event.inputs.test_type == 'individual' }}
-      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
-      run: |
-        echo "Running individual test..."
-        python3 run_tests.py ipv6_rule_matching -v
-        
+       
     - name: Collect Test Results
       if: always()
       run: |
