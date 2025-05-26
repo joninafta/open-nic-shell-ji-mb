@@ -29,10 +29,6 @@ This directory contains GitHub Actions workflows for automated testing and valid
    - Checks SystemVerilog syntax with Verilator
    - Ensures code quality standards
 
-3. **security-scan**: Basic security validation
-   - Scans for sensitive files and credentials
-   - Basic security hygiene checks
-
 **Test Types (Manual Dispatch):**
 - `smoke`: Quick smoke tests only
 - `regression`: Full regression suite (default)
