@@ -48,7 +48,7 @@ module filter_rx_pipeline_tb (
 
     // Pack configuration register structure
     cfg_reg_t cfg_reg_in;
-    cfg_reg_t cfg_reg_out;
+    status_reg_t status_reg_out;
     
     assign cfg_reg_in.filter_rules[0].ipv4_addr = cfg_reg_filter_rules_0_ipv4_addr;
     assign cfg_reg_in.filter_rules[0].ipv6_addr = cfg_reg_filter_rules_0_ipv6_addr;
@@ -57,17 +57,11 @@ module filter_rx_pipeline_tb (
     assign cfg_reg_in.filter_rules[1].ipv6_addr = cfg_reg_filter_rules_1_ipv6_addr;
     assign cfg_reg_in.filter_rules[1].port = cfg_reg_filter_rules_1_port;
     
-    // Initialize unused status inputs to 0
-    assign cfg_reg_in.status.rule0_hit_count = 32'h0;
-    assign cfg_reg_in.status.rule1_hit_count = 32'h0;
-    assign cfg_reg_in.status.total_packets = 32'h0;
-    assign cfg_reg_in.status.dropped_packets = 32'h0;
-
-    // Extract status outputs
-    assign rule0_hit_count = cfg_reg_out.status.rule0_hit_count;
-    assign rule1_hit_count = cfg_reg_out.status.rule1_hit_count;
-    assign total_packets = cfg_reg_out.status.total_packets;
-    assign dropped_packets = cfg_reg_out.status.dropped_packets;
+    // Extract status outputs from DUT
+    assign rule0_hit_count = status_reg_out.rule0_hit_count;
+    assign rule1_hit_count = status_reg_out.rule1_hit_count;
+    assign total_packets = status_reg_out.total_packets;
+    assign dropped_packets = status_reg_out.dropped_packets;
 
     // Instantiate DUT
     filter_rx_pipeline dut (
@@ -86,7 +80,7 @@ module filter_rx_pipeline_tb (
         .m_axis_tready(m_axis_tready),
         
         .cfg_reg(cfg_reg_in),
-        .cfg_reg_out(cfg_reg_out),
+        .status_reg(status_reg_out),
         
         .aclk(aclk),
         .aresetn(aresetn)

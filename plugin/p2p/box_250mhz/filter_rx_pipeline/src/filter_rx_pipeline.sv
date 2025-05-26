@@ -38,7 +38,7 @@ module filter_rx_pipeline (
     input  cfg_reg_t   cfg_reg,
 
     // Configuration register output (status)
-    output cfg_reg_t   cfg_reg_out,
+    output status_reg_t   status_reg,
 
     // Clock and Reset
     input  wire        aclk,
@@ -76,13 +76,10 @@ module filter_rx_pipeline (
     reg [31:0] dropped_packets;
 
     // Assign status registers to output
-    assign cfg_reg_out.status.rule0_hit_count = rule0_hit_count;
-    assign cfg_reg_out.status.rule1_hit_count = rule1_hit_count;
-    assign cfg_reg_out.status.total_packets = total_packets;
-    assign cfg_reg_out.status.dropped_packets = dropped_packets;
-    
-    // Pass through input configuration to output
-    assign cfg_reg_out.filter_rules = cfg_reg.filter_rules;
+    assign status_reg.rule0_hit_count = rule0_hit_count;
+    assign status_reg.rule1_hit_count = rule1_hit_count;
+    assign status_reg.total_packets = total_packets;
+    assign status_reg.dropped_packets = dropped_packets;
 
     // Extract packet headers using defined bit offsets (big-endian)
     // Use p0_* signals for header extraction (input stage)

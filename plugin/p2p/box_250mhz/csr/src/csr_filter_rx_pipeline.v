@@ -34,6 +34,9 @@ module csr_filter_rx_pipeline #(
     // Configuration register output
     output cfg_reg_t               cfg_reg,
 
+    //Status Regs
+    input status_reg_t             status_reg,
+
     // Clock and Reset
     input  wire                    aclk,
     input  wire                    aresetn
@@ -149,10 +152,10 @@ module csr_filter_rx_pipeline #(
                             RULE1_IPV6_3_OFFSET:  read_data <= cfg_reg_internal.filter_rules[1].ipv6_addr[127:96];
                             RULE1_PORT_OFFSET:    read_data <= cfg_reg_internal.filter_rules[1].port;
                             // Status registers (read-only from external cfg_reg input)
-                            RULE0_HIT_COUNT_OFFSET: read_data <= cfg_reg.status.rule0_hit_count;
-                            RULE1_HIT_COUNT_OFFSET: read_data <= cfg_reg.status.rule1_hit_count;
-                            TOTAL_PKT_COUNT_OFFSET: read_data <= cfg_reg.status.total_packets;
-                            DROP_PKT_COUNT_OFFSET:  read_data <= cfg_reg.status.dropped_packets;
+                            RULE0_HIT_COUNT_OFFSET: read_data <= status_reg.rule0_hit_count;
+                            RULE1_HIT_COUNT_OFFSET: read_data <= status_reg.rule1_hit_count;
+                            TOTAL_PKT_COUNT_OFFSET: read_data <= status_reg.total_packets;
+                            DROP_PKT_COUNT_OFFSET:  read_data <= status_reg.dropped_packets;
                             default: read_data <= 32'h0;
                         endcase
                     end
