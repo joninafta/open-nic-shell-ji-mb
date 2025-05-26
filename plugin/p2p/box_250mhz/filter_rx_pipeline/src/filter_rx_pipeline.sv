@@ -87,29 +87,22 @@ module filter_rx_pipeline #(
     assign status_reg.total_packets = total_packets;
     assign status_reg.dropped_packets = dropped_packets;
 
-    // Header validation based on tkeep (ensure sufficient bytes are present)
-    // Ethernet header requires first 14 bytes (bits 0-13)
-    wire eth_header_valid = &p0_tkeep[13:0];
-    
-    // IPv4 header requires Ethernet + 20 bytes minimum (bits 0-33)
-    wire ipv4_header_valid = eth_header_valid && &p0_tkeep[33:0];
-    
-    // IPv6 header requires Ethernet + 40 bytes minimum (bits 0-53)
-    wire ipv6_header_valid = eth_header_valid && &p0_tkeep[53:0];
-    
-    // TCP/UDP ports require additional 4 bytes after IP header
-    // IPv4: Ethernet(14) + IPv4(20) + Port(4) = 38 bytes (bits 0-37)
-    wire ipv4_port_valid = ipv4_header_valid && &p0_tkeep[37:0];
-    
-    // IPv6: Ethernet(14) + IPv6(40) + Port(4) = 58 bytes (bits 0-57)
-    wire ipv6_port_valid = ipv6_header_valid && &p0_tkeep[57:0];
-
     // Extract packet headers using defined bit offsets (big-endian)
     // Use p0_* signals for header extraction (input stage)
     // Ethernet header
     wire [47:0] eth_dst_mac  = p0_tdata[ETH_DST_MAC_MSB:ETH_DST_MAC_LSB];
     wire [47:0] eth_src_mac  = p0_tdata[ETH_SRC_MAC_MSB:ETH_SRC_MAC_LSB];
     wire [15:0] eth_type     = p0_tdata[ETH_TYPE_MSB:ETH_TYPE_LSB];
+
+    // Check for VLAN tags - ensure this is untagged Ethernet only
+    // VLAN tagged frames have 0x8100 (802.1Q) or 0x88A8 (802.1ad) in EtherType field
+    wire has_vlan_tag = (eth_type == 16'h8100) ||  // 802.1Q VLAN tag
+                       (eth_type == 16'h88A8) ||  // 802.1ad Service VLAN tag
+                       (eth_type == 16'h9100) ||  // Legacy QinQ
+                       (eth_type == 16'h9200);    // Legacy QinQ variant
+    
+    // Only process untagged Ethernet frames
+    wire eth_untagged_valid = !has_vlan_tag;
 
     // IPv4 header fields
     wire [31:0] ipv4_src_ip  = p0_tdata[IPV4_SRC_IP_MSB:IPV4_SRC_IP_LSB];
@@ -127,9 +120,9 @@ module filter_rx_pipeline #(
     wire [15:0] ipv6_src_port = p0_tdata[IPV6_SRC_PORT_MSB:IPV6_SRC_PORT_LSB];
     wire [15:0] ipv6_dst_port = p0_tdata[IPV6_DST_PORT_MSB:IPV6_DST_PORT_LSB];
 
-    // Rule matching logic - parameterized with validation
-    wire is_ipv4 = eth_header_valid && (eth_type == ETH_TYPE_IPV4) && ipv4_header_valid;
-    wire is_ipv6 = eth_header_valid && (eth_type == ETH_TYPE_IPV6) && ipv6_header_valid;
+    // Rule matching logic - parameterized with validation (untagged Ethernet only)
+    wire is_ipv4 = eth_untagged_valid && (eth_type == ETH_TYPE_IPV4);
+    wire is_ipv6 = eth_untagged_valid && (eth_type == ETH_TYPE_IPV6);
     
     // Arrays for rule matching signals
     wire [NUM_RULES-1:0] rule_ipv4_ip_match;
@@ -144,20 +137,20 @@ module filter_rx_pipeline #(
     genvar i;
     generate
         for (i = 0; i < NUM_RULES; i = i + 1) begin : gen_rule_match
-            // IPv4 matching - only when headers are valid
+            // IPv4 matching
             assign rule_ipv4_ip_match[i] = is_ipv4 && 
                                           ((cfg_reg.filter_rules[i].ipv4_addr == 32'h0) || 
                                            (ipv4_src_ip == cfg_reg.filter_rules[i].ipv4_addr));
-            assign rule_ipv4_port_match[i] = is_ipv4 && ipv4_port_valid &&
+            assign rule_ipv4_port_match[i] = is_ipv4 &&
                                             ((cfg_reg.filter_rules[i].port == 32'h0) || 
                                              (ipv4_src_port == cfg_reg.filter_rules[i].port[15:0]));
             assign rule_ipv4_match[i] = rule_ipv4_ip_match[i] || rule_ipv4_port_match[i];
 
-            // IPv6 matching - only when headers are valid
+            // IPv6 matching
             assign rule_ipv6_ip_match[i] = is_ipv6 && 
                                           ((cfg_reg.filter_rules[i].ipv6_addr == 128'h0) || 
                                            (ipv6_src_ip == cfg_reg.filter_rules[i].ipv6_addr));
-            assign rule_ipv6_port_match[i] = is_ipv6 && ipv6_port_valid &&
+            assign rule_ipv6_port_match[i] = is_ipv6 &&
                                             ((cfg_reg.filter_rules[i].port == 32'h0) || 
                                              (ipv6_src_port == cfg_reg.filter_rules[i].port[15:0]));
             assign rule_ipv6_match[i] = rule_ipv6_ip_match[i] || rule_ipv6_port_match[i];
@@ -167,9 +160,8 @@ module filter_rx_pipeline #(
         end
     endgenerate
 
-    // Overall filter match (OR of all rules) - only valid when headers are complete
-    wire header_complete = (is_ipv4 && ipv4_port_valid) || (is_ipv6 && ipv6_port_valid);
-    wire filter_match = header_complete && (|rule_match);
+    // Overall filter match (OR of all rules)
+    wire filter_match = (is_ipv4 || is_ipv6) && (|rule_match);
 
     // Priority encoder for rule hit (lowest index has highest priority)
     reg [$clog2(NUM_RULES+1)-1:0] rule_hit_encoded;
