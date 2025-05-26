@@ -30,7 +30,6 @@ package cfg_reg_pkg;
     // Configuration register structure
     typedef struct packed {
         rule_array_t filter_rules;   // Array of filtering rules
-        status_reg_t status;         // Status/counter registers
     } cfg_reg_t;
 
     // Constants
