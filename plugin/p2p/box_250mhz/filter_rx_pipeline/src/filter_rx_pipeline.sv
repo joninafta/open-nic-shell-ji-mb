@@ -17,7 +17,9 @@
 import cfg_reg_pkg::*;
 import packet_pkg::*;
 
-module filter_rx_pipeline (
+module filter_rx_pipeline #(
+    parameter NUM_RULES = 2  // Configurable number of filter rules
+) (
     // Slave AXI Stream Interface (from adapter)
     input  wire        s_axis_tvalid,
     input  wire [511:0] s_axis_tdata,
@@ -69,17 +71,38 @@ module filter_rx_pipeline (
     reg        p2_tlast;
     reg [47:0] p2_tuser;
 
-    // Packet status counters
-    reg [31:0] rule0_hit_count;
-    reg [31:0] rule1_hit_count;
+    // Packet status counters - now parameterized
+    reg [31:0] rule_hit_count [NUM_RULES-1:0];
     reg [31:0] total_packets;
     reg [31:0] dropped_packets;
 
-    // Assign status registers to output
-    assign status_reg.rule0_hit_count = rule0_hit_count;
-    assign status_reg.rule1_hit_count = rule1_hit_count;
+    // Assign status registers to output (assuming status_reg supports variable rules)
+    genvar k;
+    generate
+        for (k = 0; k < NUM_RULES; k = k + 1) begin : gen_status_assign
+            if (k == 0) assign status_reg.rule0_hit_count = rule_hit_count[0];
+            if (k == 1) assign status_reg.rule1_hit_count = rule_hit_count[1];
+        end
+    endgenerate
     assign status_reg.total_packets = total_packets;
     assign status_reg.dropped_packets = dropped_packets;
+
+    // Header validation based on tkeep (ensure sufficient bytes are present)
+    // Ethernet header requires first 14 bytes (bits 0-13)
+    wire eth_header_valid = &p0_tkeep[13:0];
+    
+    // IPv4 header requires Ethernet + 20 bytes minimum (bits 0-33)
+    wire ipv4_header_valid = eth_header_valid && &p0_tkeep[33:0];
+    
+    // IPv6 header requires Ethernet + 40 bytes minimum (bits 0-53)
+    wire ipv6_header_valid = eth_header_valid && &p0_tkeep[53:0];
+    
+    // TCP/UDP ports require additional 4 bytes after IP header
+    // IPv4: Ethernet(14) + IPv4(20) + Port(4) = 38 bytes (bits 0-37)
+    wire ipv4_port_valid = ipv4_header_valid && &p0_tkeep[37:0];
+    
+    // IPv6: Ethernet(14) + IPv6(40) + Port(4) = 58 bytes (bits 0-57)
+    wire ipv6_port_valid = ipv6_header_valid && &p0_tkeep[57:0];
 
     // Extract packet headers using defined bit offsets (big-endian)
     // Use p0_* signals for header extraction (input stage)
@@ -104,50 +127,63 @@ module filter_rx_pipeline (
     wire [15:0] ipv6_src_port = p0_tdata[IPV6_SRC_PORT_MSB:IPV6_SRC_PORT_LSB];
     wire [15:0] ipv6_dst_port = p0_tdata[IPV6_DST_PORT_MSB:IPV6_DST_PORT_LSB];
 
-    // Rule matching logic
-    wire is_ipv4 = (eth_type == ETH_TYPE_IPV4);
-    wire is_ipv6 = (eth_type == ETH_TYPE_IPV6);
+    // Rule matching logic - parameterized with validation
+    wire is_ipv4 = eth_header_valid && (eth_type == ETH_TYPE_IPV4) && ipv4_header_valid;
+    wire is_ipv6 = eth_header_valid && (eth_type == ETH_TYPE_IPV6) && ipv6_header_valid;
     
-    // Rule 0 matching
-    wire rule0_ipv4_ip_match = is_ipv4 && 
-                              ((cfg_reg.filter_rules[0].ipv4_addr == 32'h0) || 
-                               (ipv4_src_ip == cfg_reg.filter_rules[0].ipv4_addr));
-    wire rule0_ipv4_port_match = is_ipv4 && 
-                                ((cfg_reg.filter_rules[0].port == 32'h0) || 
-                                 (ipv4_src_port == cfg_reg.filter_rules[0].port[15:0]));
-    wire rule0_ipv4_match = rule0_ipv4_ip_match || rule0_ipv4_port_match;
+    // Arrays for rule matching signals
+    wire [NUM_RULES-1:0] rule_ipv4_ip_match;
+    wire [NUM_RULES-1:0] rule_ipv4_port_match;
+    wire [NUM_RULES-1:0] rule_ipv4_match;
+    wire [NUM_RULES-1:0] rule_ipv6_ip_match;
+    wire [NUM_RULES-1:0] rule_ipv6_port_match;
+    wire [NUM_RULES-1:0] rule_ipv6_match;
+    wire [NUM_RULES-1:0] rule_match;
 
-    wire rule0_ipv6_ip_match = is_ipv6 && 
-                              ((cfg_reg.filter_rules[0].ipv6_addr == 128'h0) || 
-                               (ipv6_src_ip == cfg_reg.filter_rules[0].ipv6_addr));
-    wire rule0_ipv6_port_match = is_ipv6 && 
-                                ((cfg_reg.filter_rules[0].port == 32'h0) || 
-                                 (ipv6_src_port == cfg_reg.filter_rules[0].port[15:0]));
-    wire rule0_ipv6_match = rule0_ipv6_ip_match || rule0_ipv6_port_match;
+    // Generate rule matching logic for each rule
+    genvar i;
+    generate
+        for (i = 0; i < NUM_RULES; i = i + 1) begin : gen_rule_match
+            // IPv4 matching - only when headers are valid
+            assign rule_ipv4_ip_match[i] = is_ipv4 && 
+                                          ((cfg_reg.filter_rules[i].ipv4_addr == 32'h0) || 
+                                           (ipv4_src_ip == cfg_reg.filter_rules[i].ipv4_addr));
+            assign rule_ipv4_port_match[i] = is_ipv4 && ipv4_port_valid &&
+                                            ((cfg_reg.filter_rules[i].port == 32'h0) || 
+                                             (ipv4_src_port == cfg_reg.filter_rules[i].port[15:0]));
+            assign rule_ipv4_match[i] = rule_ipv4_ip_match[i] || rule_ipv4_port_match[i];
 
-    wire rule0_match = rule0_ipv4_match || rule0_ipv6_match;
+            // IPv6 matching - only when headers are valid
+            assign rule_ipv6_ip_match[i] = is_ipv6 && 
+                                          ((cfg_reg.filter_rules[i].ipv6_addr == 128'h0) || 
+                                           (ipv6_src_ip == cfg_reg.filter_rules[i].ipv6_addr));
+            assign rule_ipv6_port_match[i] = is_ipv6 && ipv6_port_valid &&
+                                            ((cfg_reg.filter_rules[i].port == 32'h0) || 
+                                             (ipv6_src_port == cfg_reg.filter_rules[i].port[15:0]));
+            assign rule_ipv6_match[i] = rule_ipv6_ip_match[i] || rule_ipv6_port_match[i];
 
-    // Rule 1 matching
-    wire rule1_ipv4_ip_match = is_ipv4 && 
-                              ((cfg_reg.filter_rules[1].ipv4_addr == 32'h0) || 
-                               (ipv4_src_ip == cfg_reg.filter_rules[1].ipv4_addr));
-    wire rule1_ipv4_port_match = is_ipv4 && 
-                                ((cfg_reg.filter_rules[1].port == 32'h0) || 
-                                 (ipv4_src_port == cfg_reg.filter_rules[1].port[15:0]));
-    wire rule1_ipv4_match = rule1_ipv4_ip_match || rule1_ipv4_port_match;
+            // Combined rule matching
+            assign rule_match[i] = rule_ipv4_match[i] || rule_ipv6_match[i];
+        end
+    endgenerate
 
-    wire rule1_ipv6_ip_match = is_ipv6 && 
-                              ((cfg_reg.filter_rules[1].ipv6_addr == 128'h0) || 
-                               (ipv6_src_ip == cfg_reg.filter_rules[1].ipv6_addr));
-    wire rule1_ipv6_port_match = is_ipv6 && 
-                                ((cfg_reg.filter_rules[1].port == 32'h0) || 
-                                 (ipv6_src_port == cfg_reg.filter_rules[1].port[15:0]));
-    wire rule1_ipv6_match = rule1_ipv6_ip_match || rule1_ipv6_port_match;
+    // Overall filter match (OR of all rules) - only valid when headers are complete
+    wire header_complete = (is_ipv4 && ipv4_port_valid) || (is_ipv6 && ipv6_port_valid);
+    wire filter_match = header_complete && (|rule_match);
 
-    wire rule1_match = rule1_ipv4_match || rule1_ipv6_match;
+    // Priority encoder for rule hit (lowest index has highest priority)
+    reg [$clog2(NUM_RULES+1)-1:0] rule_hit_encoded;
+    always @(*) begin
+        rule_hit_encoded = 0;
+        for (int j = 0; j < NUM_RULES; j = j + 1) begin
+            if (rule_match[j]) begin
+                rule_hit_encoded = $clog2(NUM_RULES+1)'(j + 1);  // Proper width casting
+                break;
+            end
+        end
+    end
 
-    wire filter_match = rule0_match || rule1_match;
-    wire [1:0] rule_hit = rule0_match ? 2'b01 : (rule1_match ? 2'b10 : 2'b00);
+    wire [1:0] rule_hit = rule_hit_encoded[1:0];  // Maintain 2-bit width for compatibility
 
     // Flow control using p1/p2 naming convention
     wire p1_ready = !p1_tvalid || p2_ready;
@@ -172,23 +208,22 @@ module filter_rx_pipeline (
         end
     end
 
-    // Packet status counters
+    // Packet status counters - parameterized
     always @(posedge aclk) begin
         if (!aresetn) begin
-            rule0_hit_count <= 32'h0;
-            rule1_hit_count <= 32'h0;
+            for (int m = 0; m < NUM_RULES; m = m + 1) begin
+                rule_hit_count[m] <= 32'h0;
+            end
             total_packets <= 32'h0;
             dropped_packets <= 32'h0;
         end else begin
             if (packet_start) begin
                 total_packets <= total_packets + 1;
-                if (rule0_match && !rule1_match) begin
-                    rule0_hit_count <= rule0_hit_count + 1;
-                end else if (rule1_match && !rule0_match) begin
-                    rule1_hit_count <= rule1_hit_count + 1;
-                end else if (rule0_match && rule1_match) begin
-                    // Both rules match - count for rule 0 (priority)
-                    rule0_hit_count <= rule0_hit_count + 1;
+                if (filter_match) begin
+                    // Increment counter for the highest priority matching rule
+                    if (rule_hit_encoded > 0) begin
+                        rule_hit_count[rule_hit_encoded - 1] <= rule_hit_count[rule_hit_encoded - 1] + 1;
+                    end
                 end else begin
                     dropped_packets <= dropped_packets + 1;
                 end
