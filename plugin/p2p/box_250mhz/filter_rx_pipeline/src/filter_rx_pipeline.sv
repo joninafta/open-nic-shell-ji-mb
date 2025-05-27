@@ -87,42 +87,40 @@ module filter_rx_pipeline #(
     assign status_reg.total_packets = total_packets;
     assign status_reg.dropped_packets = dropped_packets;
 
-    // Extract packet headers using defined bit offsets (big-endian)
+    // Extract packet headers using struct-based parsing (big-endian)
     // Use p0_* signals for header extraction (input stage)
-    // Ethernet header
-    wire [47:0] eth_dst_mac  = p0_tdata[ETH_DST_MAC_MSB:ETH_DST_MAC_LSB];
-    wire [47:0] eth_src_mac  = p0_tdata[ETH_SRC_MAC_MSB:ETH_SRC_MAC_LSB];
-    wire [15:0] eth_type     = p0_tdata[ETH_TYPE_MSB:ETH_TYPE_LSB];
-
-    // Check for VLAN tags - ensure this is untagged Ethernet only
-    // VLAN tagged frames have 0x8100 (802.1Q) or 0x88A8 (802.1ad) in EtherType field
-    wire has_vlan_tag = (eth_type == 16'h8100) ||  // 802.1Q VLAN tag
-                       (eth_type == 16'h88A8) ||  // 802.1ad Service VLAN tag
-                       (eth_type == 16'h9100) ||  // Legacy QinQ
-                       (eth_type == 16'h9200);    // Legacy QinQ variant
     
-    // Only process untagged Ethernet frames
-    wire eth_untagged_valid = !has_vlan_tag;
+    // Cast 512-bit data to packet structures for easy field access
+    eth_ipv4_pkt_t eth_ipv4_pkt;
+    eth_ipv6_pkt_t eth_ipv6_pkt;
+    
+    assign eth_ipv4_pkt = eth_ipv4_pkt_t'(p0_tdata);
+    assign eth_ipv6_pkt = eth_ipv6_pkt_t'(p0_tdata);
+    
+    // Extract Ethernet header (common for both IPv4 and IPv6)
+    wire [47:0] eth_dst_mac  = eth_ipv4_pkt.eth.dst_mac;
+    wire [47:0] eth_src_mac  = eth_ipv4_pkt.eth.src_mac;
+    wire [15:0] eth_type     = eth_ipv4_pkt.eth.eth_type;
 
-    // IPv4 header fields
-    wire [31:0] ipv4_src_ip  = p0_tdata[IPV4_SRC_IP_MSB:IPV4_SRC_IP_LSB];
-    wire [31:0] ipv4_dst_ip  = p0_tdata[IPV4_DST_IP_MSB:IPV4_DST_IP_LSB];
-    wire [7:0]  ipv4_protocol = p0_tdata[IPV4_PROTOCOL_MSB:IPV4_PROTOCOL_LSB];
+    // IPv4 header fields (using struct)
+    wire [31:0] ipv4_src_ip   = eth_ipv4_pkt.ipv4.src_ip;
+    wire [31:0] ipv4_dst_ip   = eth_ipv4_pkt.ipv4.dst_ip;
+    wire [7:0]  ipv4_protocol = eth_ipv4_pkt.ipv4.protocol;
 
-    // IPv6 header fields
-    wire [127:0] ipv6_src_ip = p0_tdata[IPV6_SRC_IP_MSB:IPV6_SRC_IP_LSB];
-    wire [127:0] ipv6_dst_ip = p0_tdata[IPV6_DST_IP_MSB:IPV6_DST_IP_LSB];
-    wire [7:0]   ipv6_next_hdr = p0_tdata[IPV6_NEXT_HDR_MSB:IPV6_NEXT_HDR_LSB];
+    // IPv6 header fields (using struct)
+    wire [127:0] ipv6_src_ip    = eth_ipv6_pkt.ipv6.src_ip;
+    wire [127:0] ipv6_dst_ip    = eth_ipv6_pkt.ipv6.dst_ip;
+    wire [7:0]   ipv6_next_hdr  = eth_ipv6_pkt.ipv6.next_header;
 
-    // TCP/UDP port fields
-    wire [15:0] ipv4_src_port = p0_tdata[IPV4_SRC_PORT_MSB:IPV4_SRC_PORT_LSB];
-    wire [15:0] ipv4_dst_port = p0_tdata[IPV4_DST_PORT_MSB:IPV4_DST_PORT_LSB];
-    wire [15:0] ipv6_src_port = p0_tdata[IPV6_SRC_PORT_MSB:IPV6_SRC_PORT_LSB];
-    wire [15:0] ipv6_dst_port = p0_tdata[IPV6_DST_PORT_MSB:IPV6_DST_PORT_LSB];
+    // TCP/UDP port fields (using struct)
+    wire [15:0] ipv4_src_port = eth_ipv4_pkt.ports.src_port;
+    wire [15:0] ipv4_dst_port = eth_ipv4_pkt.ports.dst_port;
+    wire [15:0] ipv6_src_port = eth_ipv6_pkt.ports.src_port;
+    wire [15:0] ipv6_dst_port = eth_ipv6_pkt.ports.dst_port;
 
-    // Rule matching logic - parameterized with validation (untagged Ethernet only)
-    wire is_ipv4 = eth_untagged_valid && (eth_type == ETH_TYPE_IPV4);
-    wire is_ipv6 = eth_untagged_valid && (eth_type == ETH_TYPE_IPV6);
+    // Rule matching logic - only process IPv4 and IPv6 packets
+    wire is_ipv4 = (eth_type == ETH_TYPE_IPV4);
+    wire is_ipv6 = (eth_type == ETH_TYPE_IPV6);
     
     // Arrays for rule matching signals
     wire [NUM_RULES-1:0] rule_ipv4_ip_match;
@@ -160,7 +158,7 @@ module filter_rx_pipeline #(
         end
     endgenerate
 
-    // Overall filter match (OR of all rules)
+    // Overall filter match - only IPv4 and IPv6 packets can match rules
     wire filter_match = (is_ipv4 || is_ipv6) && (|rule_match);
 
     // Priority encoder for rule hit (lowest index has highest priority)

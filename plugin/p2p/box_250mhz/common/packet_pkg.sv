@@ -64,6 +64,22 @@ package packet_pkg;
         port_hdr_t ports;
     } pkt_hdr_t;
 
+    // Ethernet + IPv4 packet structure (for struct-based parsing)
+    typedef struct packed {
+        eth_hdr_t   eth;      // 14 bytes: Ethernet header
+        ipv4_hdr_t  ipv4;     // 20 bytes: IPv4 header
+        port_hdr_t  ports;    // 4 bytes: TCP/UDP ports
+        logic [447:0] payload; // Remaining payload to fill 512 bits (56 bytes)
+    } eth_ipv4_pkt_t;
+
+    // Ethernet + IPv6 packet structure (for struct-based parsing)
+    typedef struct packed {
+        eth_hdr_t   eth;      // 14 bytes: Ethernet header
+        ipv6_hdr_t  ipv6;     // 40 bytes: IPv6 header
+        port_hdr_t  ports;    // 4 bytes: TCP/UDP ports
+        logic [95:0] payload; // Remaining payload to fill 512 bits (12 bytes)
+    } eth_ipv6_pkt_t;
+
     // EtherType constants
     parameter logic [15:0] ETH_TYPE_IPV4 = 16'h0800;
     parameter logic [15:0] ETH_TYPE_IPV6 = 16'h86DD;
@@ -71,43 +87,5 @@ package packet_pkg;
     // IP Protocol constants
     parameter logic [7:0] IP_PROTO_TCP = 8'h06;
     parameter logic [7:0] IP_PROTO_UDP = 8'h11;
-
-    // Bit offset constants for 512-bit data bus (big-endian)
-    // Ethernet header offsets (starts at byte 0)
-    localparam ETH_DST_MAC_MSB     = 511;
-    localparam ETH_DST_MAC_LSB     = 464;
-    localparam ETH_SRC_MAC_MSB     = 463;
-    localparam ETH_SRC_MAC_LSB     = 416;
-    localparam ETH_TYPE_MSB        = 415;
-    localparam ETH_TYPE_LSB        = 400;
-
-    // IPv4 header offsets (starts at byte 14)
-    localparam IPV4_PROTOCOL_MSB   = 328;
-    localparam IPV4_PROTOCOL_LSB   = 321;
-    localparam IPV4_SRC_IP_MSB     = 335;
-    localparam IPV4_SRC_IP_LSB     = 304;
-    localparam IPV4_DST_IP_MSB     = 303;
-    localparam IPV4_DST_IP_LSB     = 272;
-
-    // IPv6 header offsets (starts at byte 14)
-    localparam IPV6_NEXT_HDR_MSB   = 280;
-    localparam IPV6_NEXT_HDR_LSB   = 273;
-    localparam IPV6_SRC_IP_MSB     = 399;
-    localparam IPV6_SRC_IP_LSB     = 272;
-    localparam IPV6_DST_IP_MSB     = 271;
-    localparam IPV6_DST_IP_LSB     = 144;
-
-    // TCP/UDP port offsets
-    // IPv4: ports start at byte 34
-    localparam IPV4_SRC_PORT_MSB   = 271;
-    localparam IPV4_SRC_PORT_LSB   = 256;
-    localparam IPV4_DST_PORT_MSB   = 255;
-    localparam IPV4_DST_PORT_LSB   = 240;
-
-    // IPv6: ports start at byte 54
-    localparam IPV6_SRC_PORT_MSB   = 143;
-    localparam IPV6_SRC_PORT_LSB   = 128;
-    localparam IPV6_DST_PORT_MSB   = 127;
-    localparam IPV6_DST_PORT_LSB   = 112;
 
 endpackage
