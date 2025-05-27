@@ -11,3 +11,9 @@ vivado*.str
 
 # Ignore build directory
 build
+
+# Ignore compilation outputs directory
+.comp
+
+# Ignore simulation products directory
+.sim
