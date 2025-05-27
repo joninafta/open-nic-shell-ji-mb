@@ -18,9 +18,7 @@
 `include "open_nic_shell_macros.vh"
 `timescale 1ns/1ps
 
-import rule_pkg::*;
 import config_reg_pkg::*;
-import packet_pkg::*;
 
 module p2p_250mhz #(
   parameter int NUM_QDMA = 1,
