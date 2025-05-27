@@ -137,23 +137,23 @@ module filter_rx_pipeline #(
     genvar i;
     generate
         for (i = 0; i < NUM_RULES; i = i + 1) begin : gen_rule_match
-            // IPv4 matching
+            // IPv4 matching - Fixed to match destination IP and port (both must match when specified)
             assign rule_ipv4_ip_match[i] = is_ipv4 && 
                                           ((cfg_reg.filter_rules[i].ipv4_addr == 32'h0) || 
-                                           (ipv4_src_ip == cfg_reg.filter_rules[i].ipv4_addr));
+                                           (ipv4_dst_ip == cfg_reg.filter_rules[i].ipv4_addr));
             assign rule_ipv4_port_match[i] = is_ipv4 &&
                                             ((cfg_reg.filter_rules[i].port == 32'h0) || 
-                                             (ipv4_src_port == cfg_reg.filter_rules[i].port[15:0]));
-            assign rule_ipv4_match[i] = rule_ipv4_ip_match[i] || rule_ipv4_port_match[i];
+                                             (ipv4_dst_port == cfg_reg.filter_rules[i].port[15:0]));
+            assign rule_ipv4_match[i] = rule_ipv4_ip_match[i] && rule_ipv4_port_match[i];
 
-            // IPv6 matching
+            // IPv6 matching - Fixed to match destination IP and port (both must match when specified)
             assign rule_ipv6_ip_match[i] = is_ipv6 && 
                                           ((cfg_reg.filter_rules[i].ipv6_addr == 128'h0) || 
-                                           (ipv6_src_ip == cfg_reg.filter_rules[i].ipv6_addr));
+                                           (ipv6_dst_ip == cfg_reg.filter_rules[i].ipv6_addr));
             assign rule_ipv6_port_match[i] = is_ipv6 &&
                                             ((cfg_reg.filter_rules[i].port == 32'h0) || 
-                                             (ipv6_src_port == cfg_reg.filter_rules[i].port[15:0]));
-            assign rule_ipv6_match[i] = rule_ipv6_ip_match[i] || rule_ipv6_port_match[i];
+                                             (ipv6_dst_port == cfg_reg.filter_rules[i].port[15:0]));
+            assign rule_ipv6_match[i] = rule_ipv6_ip_match[i] && rule_ipv6_port_match[i];
 
             // Combined rule matching
             assign rule_match[i] = rule_ipv4_match[i] || rule_ipv6_match[i];
@@ -192,9 +192,14 @@ module filter_rx_pipeline #(
         if (!aresetn) begin
             packet_in_progress <= 1'b0;
         end else begin
-            if (packet_start) begin
+            if (packet_start && packet_end) begin
+                // Single-cycle packet: start and end in same cycle, stay at 0
+                packet_in_progress <= 1'b0;
+            end else if (packet_start) begin
+                // Multi-cycle packet start
                 packet_in_progress <= 1'b1;
             end else if (packet_end) begin
+                // Multi-cycle packet end
                 packet_in_progress <= 1'b0;
             end
         end
@@ -270,6 +275,42 @@ module filter_rx_pipeline #(
         if (m_axis_tvalid && m_axis_tready && m_axis_tlast) begin
             $display("[%0t] PACKET TO QDMA: Rule hit = %0d, Data = 0x%h", 
                      $time, p1_rule_hit, p2_tdata[63:0]);
+        end
+    end
+
+    // Debug: Print packet start and basic info
+    always @(posedge aclk) begin
+        if (p0_tvalid && s_axis_tready) begin
+            if (packet_start) begin
+                $display("[%0t] DEBUG: PACKET START", $time);
+                $display("  Raw data[511:400]: 0x%03h", p0_tdata[511:400]);
+                $display("  Raw data[415:400]: 0x%04h (EtherType field)", p0_tdata[415:400]);
+                $display("  Raw data[511:448]: 0x%016h", p0_tdata[511:448]);
+                $display("  EthType=0x%h, is_ipv4=%b, is_ipv6=%b", eth_type, is_ipv4, is_ipv6);
+                $display("  Expected IPv4 EtherType: 0x0800");
+                if (is_ipv4) begin
+                    $display("  IPv4 Packet: dst_ip=0x%h (%d.%d.%d.%d), dst_port=%d", 
+                             ipv4_dst_ip, ipv4_dst_ip[31:24], ipv4_dst_ip[23:16], ipv4_dst_ip[15:8], ipv4_dst_ip[7:0], ipv4_dst_port);
+                    $display("  Rule 0: ipv4_addr=0x%h (%d.%d.%d.%d), port=%d", 
+                             cfg_reg.filter_rules[0].ipv4_addr, 
+                             cfg_reg.filter_rules[0].ipv4_addr[31:24], cfg_reg.filter_rules[0].ipv4_addr[23:16], 
+                             cfg_reg.filter_rules[0].ipv4_addr[15:8], cfg_reg.filter_rules[0].ipv4_addr[7:0],
+                             cfg_reg.filter_rules[0].port[15:0]);
+                    $display("  Rule 0: ip_match=%b, port_match=%b, rule_match=%b", 
+                             rule_ipv4_ip_match[0], rule_ipv4_port_match[0], rule_ipv4_match[0]);
+                    $display("  Overall: filter_match=%b", filter_match);
+                end else begin
+                    $display("  Packet NOT recognized as IPv4!");
+                end
+            end
+        end
+    end
+
+    // Additional debug for packet_start detection
+    always @(posedge aclk) begin
+        if (p0_tvalid && s_axis_tready) begin
+            $display("[%0t] FILTER: p0_tvalid=%b, s_axis_tready=%b, packet_in_progress=%b, packet_start=%b, packet_end=%b", 
+                     $time, p0_tvalid, s_axis_tready, packet_in_progress, packet_start, packet_end);
         end
     end
 
