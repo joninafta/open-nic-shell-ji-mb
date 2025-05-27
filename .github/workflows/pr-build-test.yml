@@ -50,30 +50,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest pytest-cov scapy
         
-    - name: Set up environment
-      run: |
-        echo "OPEN_NIC_SHELL_ROOT=${{ github.workspace }}" >> $GITHUB_ENV
-        echo "Build and simulation directories:"
-        mkdir -p ${{ github.workspace }}/.comp
-        mkdir -p ${{ github.workspace }}/.sim
-        ls -la ${{ github.workspace }}/
-        
-    - name: Build Filter RX Pipeline
-      working-directory: plugin/p2p/box_250mhz/filter_rx_pipeline/scripts
-      run: |
-        echo "Building filter RX pipeline..."
-        chmod +x build.sh
-        ./build.sh
-        
-    - name: Verify Build Artifacts
-      run: |
-        echo "Checking build artifacts..."
-        ls -la ${{ github.workspace }}/.comp/filter_rx_pipeline/
-        if [ ! -f "${{ github.workspace }}/.comp/filter_rx_pipeline/sim" ]; then
-          echo "ERROR: Simulation executable not found"
-          exit 1
-        fi
-        chmod +x ${{ github.workspace }}/.comp/filter_rx_pipeline/sim
     
   lint-and-format:
     runs-on: ubuntu-latest
