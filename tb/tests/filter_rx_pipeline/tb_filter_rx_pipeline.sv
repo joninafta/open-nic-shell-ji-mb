@@ -5,72 +5,82 @@
 
 `timescale 1ns / 1ps
 
+import cfg_reg_pkg::*;
+
 module tb_filter_rx_pipeline;
 
-    // Clock and reset
-    logic clk;
-    logic rst_n;
+    // Clock and reset  
+    logic aclk;
+    logic aresetn;
     
-    // AXI Stream input interface
-    logic        s_axis_rx_tvalid;
-    logic        s_axis_rx_tready;
-    logic [511:0] s_axis_rx_tdata;
-    logic [63:0]  s_axis_rx_tkeep;
-    logic        s_axis_rx_tlast;
-    logic [15:0] s_axis_rx_tuser;
+    // AXI Stream input interface (using actual signal names)
+    logic        s_axis_tvalid;
+    logic        s_axis_tready;
+    logic [511:0] s_axis_tdata;
+    logic [63:0]  s_axis_tkeep;
+    logic        s_axis_tlast;
+    logic [47:0]  s_axis_tuser;
     
-    // AXI Stream output interface  
-    logic        m_axis_rx_tvalid;
-    logic        m_axis_rx_tready;
-    logic [511:0] m_axis_rx_tdata;
-    logic [63:0]  m_axis_rx_tkeep;
-    logic        m_axis_rx_tlast;
-    logic [15:0] m_axis_rx_tuser;
+    // AXI Stream output interface (using actual signal names)
+    logic        m_axis_tvalid;
+    logic        m_axis_tready;
+    logic [511:0] m_axis_tdata;
+    logic [63:0]  m_axis_tkeep;
+    logic        m_axis_tlast;
+    logic [47:0]  m_axis_tuser;
     
-    // Configuration interface (simplified)
-    logic [31:0] cfg_data;
-    logic [15:0] cfg_addr;
-    logic        cfg_valid;
-    logic        cfg_ready;
-    
-    // Status/debug signals
-    logic        filter_drop_valid;
-    logic [3:0]  filter_drop_reason;
+    // Configuration and status interfaces
+    cfg_reg_t    cfg_reg;
+    status_reg_t status_reg;
     
     // Device Under Test
     filter_rx_pipeline #(
         .NUM_RULES(2)
     ) dut (
-        .clk(clk),
-        .rst_n(rst_n),
+        // Clock and reset
+        .aclk(aclk),
+        .aresetn(aresetn),
         
-        // Input AXI Stream
-        .s_axis_rx_tvalid(s_axis_rx_tvalid),
-        .s_axis_rx_tready(s_axis_rx_tready),
-        .s_axis_rx_tdata(s_axis_rx_tdata),
-        .s_axis_rx_tkeep(s_axis_rx_tkeep),
-        .s_axis_rx_tlast(s_axis_rx_tlast),
-        .s_axis_rx_tuser(s_axis_rx_tuser),
+        // Slave AXI Stream Interface (from adapter)
+        .s_axis_tvalid(s_axis_tvalid),
+        .s_axis_tready(s_axis_tready),
+        .s_axis_tdata(s_axis_tdata),
+        .s_axis_tkeep(s_axis_tkeep),
+        .s_axis_tlast(s_axis_tlast),
+        .s_axis_tuser(s_axis_tuser),
         
-        // Output AXI Stream
-        .m_axis_rx_tvalid(m_axis_rx_tvalid),
-        .m_axis_rx_tready(m_axis_rx_tready),
-        .m_axis_rx_tdata(m_axis_rx_tdata),
-        .m_axis_rx_tkeep(m_axis_rx_tkeep),
-        .m_axis_rx_tlast(m_axis_rx_tlast),
-        .m_axis_rx_tuser(m_axis_rx_tuser)
+        // Master AXI Stream Interface (to QDMA)
+        .m_axis_tvalid(m_axis_tvalid),
+        .m_axis_tready(m_axis_tready),
+        .m_axis_tdata(m_axis_tdata),
+        .m_axis_tkeep(m_axis_tkeep),
+        .m_axis_tlast(m_axis_tlast),
+        .m_axis_tuser(m_axis_tuser),
         
-        // Note: Configuration and status signals would be connected
-        // based on the actual filter_rx_pipeline interface
+        // Configuration register input
+        .cfg_reg(cfg_reg),
+        
+        // Configuration register output (status)
+        .status_reg(status_reg)
     );
     
-    // Connect debug/status signals if they exist in the actual module
-    assign filter_drop_valid = 1'b0;  // Placeholder
-    assign filter_drop_reason = 4'b0; // Placeholder
+    // Initialize configuration registers
+    initial begin
+        cfg_reg = '0;  // Clear all configuration
+        
+        // Set up a basic IPv4 filter rule for testing
+        cfg_reg.filter_rules[0].ipv4_addr = 32'hC0A80001; // 192.168.0.1
+        cfg_reg.filter_rules[0].ipv6_addr = 128'h0;       // Don't match IPv6
+        cfg_reg.filter_rules[0].port = 32'h50;            // Port 80 (HTTP)
+        
+        cfg_reg.filter_rules[1].ipv4_addr = 32'h0;        // Match any IPv4
+        cfg_reg.filter_rules[1].ipv6_addr = 128'h0;       // Don't match IPv6  
+        cfg_reg.filter_rules[1].port = 32'h0;             // Match any port
+    end
     
     // Initialize output ready
     initial begin
-        m_axis_rx_tready = 1'b1;  // Always ready for output
+        m_axis_tready = 1'b1;  // Always ready for output
     end
     
     // Dump waves for debugging

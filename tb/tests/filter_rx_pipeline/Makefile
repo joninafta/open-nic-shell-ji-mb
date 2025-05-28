@@ -2,22 +2,25 @@
 # OpenNIC Shell Verification Environment
 
 # Project settings
-PROJECT_ROOT ?= $(shell pwd)/../../../..
+PROJECT_ROOT := $(shell cd ../../.. && pwd)
 TB_ROOT = $(PROJECT_ROOT)/tb
 MODULE_NAME = filter_rx_pipeline
 
 # Simulator settings
-SIM ?= questa
+SIM ?= verilator
 TOPLEVEL_LANG ?= verilog
 TOPLEVEL = tb_$(MODULE_NAME)
 
 # Source files
-VERILOG_SOURCES = $(TB_ROOT)/tests/$(MODULE_NAME)/tb_$(MODULE_NAME).sv
+VERILOG_SOURCES = $(PROJECT_ROOT)/plugin/p2p/box_250mhz/common/cfg_reg_pkg.sv
+VERILOG_SOURCES += $(PROJECT_ROOT)/plugin/p2p/box_250mhz/common/packet_pkg.sv
 VERILOG_SOURCES += $(PROJECT_ROOT)/plugin/p2p/box_250mhz/$(MODULE_NAME)/src/$(MODULE_NAME).sv
+VERILOG_SOURCES += tb_$(MODULE_NAME).sv
 
 # Include directories
 COMPILE_ARGS += +incdir+$(PROJECT_ROOT)/src
 COMPILE_ARGS += +incdir+$(PROJECT_ROOT)/plugin/p2p/box_250mhz/$(MODULE_NAME)/src
+COMPILE_ARGS += +incdir+$(PROJECT_ROOT)/plugin/p2p/box_250mhz/common
 
 # Simulator specific options
 ifeq ($(SIM),questa)
@@ -38,15 +41,30 @@ ifeq ($(SIM),vcs)
     COMPILE_ARGS += -sverilog
 endif
 
+ifeq ($(SIM),verilator)
+    COMPILE_ARGS += --binary
+    COMPILE_ARGS += --trace
+    COMPILE_ARGS += --trace-structs
+    COMPILE_ARGS += --timing
+    COMPILE_ARGS += -Wno-UNUSEDSIGNAL
+    COMPILE_ARGS += -Wno-UNUSEDPARAM
+    COMPILE_ARGS += -Wno-GENUNNAMED
+    COMPILE_ARGS += -Wno-IMPORTSTAR
+    COMPILE_ARGS += -Wno-VARHIDDEN
+    COMPILE_ARGS += --coverage
+    COMPILE_ARGS += --x-assign unique
+    COMPILE_ARGS += --x-initial unique
+endif
+
 # Test modules (Python)
 MODULE = test_filter_basic
 
-# Python path setup
-export PYTHONPATH := $(TB_ROOT):$(PYTHONPATH)
-export PROJECT_ROOT := $(PROJECT_ROOT)
+# Python path setup - ensure tb package is importable
+PYTHONPATH := $(TB_ROOT):$(PYTHONPATH)
+export PYTHONPATH
 
 # Test targets
-.PHONY: test clean waves help
+.PHONY: test waves help
 
 # Default test
 test: test_basic
@@ -86,21 +104,6 @@ waves:
 		echo "No waveform files found"; \
 	fi
 
-# Clean build artifacts
-clean:
-	rm -rf __pycache__/
-	rm -rf .pytest_cache/
-	rm -rf sim_build/
-	rm -f *.vcd
-	rm -f *.wlf
-	rm -f *.log
-	rm -f transcript
-	rm -rf work/
-	rm -rf waves.shm/
-	rm -rf xcelium.d/
-	rm -rf DVEfiles/
-	rm -f ucli.key
-
 # Help target
 help:
 	@echo "OpenNIC Filter RX Pipeline Testbench"
@@ -112,16 +115,15 @@ help:
 	@echo "  test_coverage - Run coverage-focused test"
 	@echo "  test_all      - Run all tests"
 	@echo "  waves         - View waveforms"
-	@echo "  clean         - Clean build artifacts"
 	@echo "  help          - Show this help"
 	@echo ""
 	@echo "Environment variables:"
-	@echo "  SIM           - Simulator (questa, xcelium, vcs) [default: questa]"
+	@echo "  SIM           - Simulator (verilator, questa, xcelium, vcs) [default: verilator]"
 	@echo "  PROJECT_ROOT  - Project root directory [default: ../../../..]"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make test                    # Run basic test with default simulator"
-	@echo "  make test SIM=xcelium       # Run basic test with Xcelium"
+	@echo "  make test                    # Run basic test with default simulator (Verilator)"
+	@echo "  make test SIM=questa        # Run basic test with Questa"
 	@echo "  make test_stress             # Run stress test"
 	@echo "  make waves                   # View waveforms"
 
