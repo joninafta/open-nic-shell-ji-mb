@@ -85,8 +85,15 @@ module tb_filter_rx_pipeline;
     
     // Dump waves for debugging
     initial begin
-        $dumpfile("filter_rx_pipeline.vcd");
-        $dumpvars(0, tb_filter_rx_pipeline);
+        `ifdef VERILATOR
+            if ($test$plusargs("trace")) begin
+                $dumpfile("filter_rx_pipeline.vcd");
+                $dumpvars(0, tb_filter_rx_pipeline);
+            end
+        `else
+            $dumpfile("filter_rx_pipeline.vcd");
+            $dumpvars(0, tb_filter_rx_pipeline);
+        `endif
     end
 
 endmodule

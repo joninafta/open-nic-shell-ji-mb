@@ -226,6 +226,7 @@ jobs:
       timeout-minutes: 45
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         make test_${{ matrix.test_suite }} SIM=verilator
         
     - name: Upload test results
@@ -259,20 +260,40 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential verilator
         
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          tb/tests/filter_rx_pipeline/venv
+        key: ${{ runner.os }}-python-regression-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Create and activate virtual environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        
     - name: Setup test environment
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
+        pip install -r requirements.txt
         ./setup_test_env.sh
         
     - name: Run complete test suite
       timeout-minutes: 60
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         make test_all SIM=verilator
         
     - name: Generate test report
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
+        python3 generate_badges.py  # Generate status badges if script exists
         python3 -c "
         import os
         import glob
@@ -397,16 +418,37 @@ jobs:
       with:
         python-version: '3.9'
         
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential verilator
+        
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          tb/tests/filter_rx_pipeline/venv
+        key: ${{ runner.os }}-python-benchmark-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Create and activate virtual environment
+      run: |
         cd tb/tests/filter_rx_pipeline
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        
+    - name: Install dependencies
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
+        pip install -r requirements.txt
         ./setup_test_env.sh
         
     - name: Run performance benchmarks
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         make test_performance SIM=verilator EXTRA_ARGS="--benchmark"
         
     - name: Store benchmark results

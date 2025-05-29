@@ -50,7 +50,7 @@ async def test_filter_basic_functionality(dut):
     await Timer(100, units='ns')
     
     # Reset the DUT
-    await opennic_standard_reset(dut, dut.clk)
+    await opennic_standard_reset(dut, dut.aclk)
     
     # Create testbench environment
     env = FilterRxPipelineEnvironment(dut, config)
@@ -91,7 +91,7 @@ async def test_filter_stress(dut):
     # Create clocks and reset
     clock_gen = await create_standard_testbench_clocks(dut, "250mhz")
     await Timer(100, units='ns')
-    await opennic_standard_reset(dut, dut.clk)
+    await opennic_standard_reset(dut, dut.aclk)
     
     # Create environment
     env = FilterRxPipelineEnvironment(dut, config)
@@ -126,7 +126,7 @@ async def test_filter_coverage(dut):
     # Setup
     clock_gen = await create_standard_testbench_clocks(dut, "250mhz")
     await Timer(100, units='ns')
-    await opennic_standard_reset(dut, dut.clk)
+    await opennic_standard_reset(dut, dut.aclk)
     
     env = FilterRxPipelineEnvironment(dut, config)
     

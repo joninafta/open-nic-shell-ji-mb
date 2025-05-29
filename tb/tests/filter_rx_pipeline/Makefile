@@ -54,6 +54,8 @@ ifeq ($(SIM),verilator)
     COMPILE_ARGS += --coverage
     COMPILE_ARGS += --x-assign unique
     COMPILE_ARGS += --x-initial unique
+    COMPILE_ARGS += -CFLAGS -std=c++14
+    COMPILE_ARGS += -LDFLAGS -std=c++14
 endif
 
 # Test modules (Python)
@@ -71,16 +73,16 @@ test: test_basic
 
 # Individual test suites
 test_basic:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_basic_comprehensive
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_basic_functionality
 
 test_config:
-	$(MAKE) run MODULE=test_filter_config TESTCASE=test_config_comprehensive
+	$(MAKE) run MODULE=test_filter_config TESTCASE=test_configuration_suite
 
 test_edge:
-	$(MAKE) run MODULE=test_filter_edge TESTCASE=test_edge_comprehensive
+	$(MAKE) run MODULE=test_filter_edge TESTCASE=test_edge_cases_suite
 
 test_performance:
-	$(MAKE) run MODULE=test_filter_performance TESTCASE=test_performance_comprehensive
+	$(MAKE) run MODULE=test_filter_performance TESTCASE=test_performance_suite
 
 test_protocol:
 	$(MAKE) run MODULE=test_filter_protocol TESTCASE=test_protocol_comprehensive
@@ -90,13 +92,13 @@ test_stats:
 
 # Individual test cases for basic functionality
 test_ipv4_basic:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_ipv4_basic_filtering
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_basic_functionality
 
-test_ipv6_basic:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_ipv6_basic_filtering
+test_stress:
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_stress
 
-test_mixed_traffic:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_mixed_traffic_filtering
+test_coverage:
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_coverage
 
 # Individual test cases for configuration
 test_rule_config:

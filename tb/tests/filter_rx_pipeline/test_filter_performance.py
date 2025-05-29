@@ -190,7 +190,7 @@ class TestPerformance:
                 
                 # Idle period
                 for _ in range(idle_cycles):
-                    await RisingEdge(dut.clk)
+                    await RisingEdge(dut.aclk)
                 
                 # Small delay between burst patterns
                 await Timer(100, units='ns')

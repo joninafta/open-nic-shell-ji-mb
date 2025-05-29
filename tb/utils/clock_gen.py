@@ -155,6 +155,7 @@ class StandardClocks:
         # Standard clock configurations
         clock_configs = {
             'clk': base_freq,
+            'aclk': base_freq,  # Common AXI clock name
             'clk_100mhz': cls.FREQ_100MHZ,
             'clk_156mhz': cls.FREQ_156MHZ,
         }
@@ -187,7 +188,7 @@ async def create_standard_testbench_clocks(dut: cocotb.handle.HierarchyObject,
     clock_signals = {}
     
     # Common clock signal names
-    clock_names = ['clk', 'clock', 'clk_250mhz', 'clk_322mhz', 'clk_100mhz', 'clk_156mhz']
+    clock_names = ['clk', 'aclk', 'clock', 'clk_250mhz', 'clk_322mhz', 'clk_100mhz', 'clk_156mhz']
     
     for name in clock_names:
         if hasattr(dut, name):
