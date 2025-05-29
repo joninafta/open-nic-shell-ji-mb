@@ -69,21 +69,96 @@ export PYTHONPATH
 # Default test
 test: test_basic
 
-# Individual tests
+# Individual test suites
 test_basic:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_basic_functionality
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_basic_comprehensive
 
-test_stress:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_stress
+test_config:
+	$(MAKE) run MODULE=test_filter_config TESTCASE=test_config_comprehensive
 
-test_coverage:
-	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_filter_coverage
+test_edge:
+	$(MAKE) run MODULE=test_filter_edge TESTCASE=test_edge_comprehensive
 
-# Run all tests
+test_performance:
+	$(MAKE) run MODULE=test_filter_performance TESTCASE=test_performance_comprehensive
+
+test_protocol:
+	$(MAKE) run MODULE=test_filter_protocol TESTCASE=test_protocol_comprehensive
+
+test_stats:
+	$(MAKE) run MODULE=test_filter_stats TESTCASE=test_statistics_comprehensive
+
+# Individual test cases for basic functionality
+test_ipv4_basic:
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_ipv4_basic_filtering
+
+test_ipv6_basic:
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_ipv6_basic_filtering
+
+test_mixed_traffic:
+	$(MAKE) run MODULE=test_filter_basic TESTCASE=test_mixed_traffic_filtering
+
+# Individual test cases for configuration
+test_rule_config:
+	$(MAKE) run MODULE=test_filter_config TESTCASE=test_rule_configuration
+
+test_dynamic_reconfig:
+	$(MAKE) run MODULE=test_filter_config TESTCASE=test_dynamic_reconfiguration
+
+# Individual test cases for edge cases
+test_malformed:
+	$(MAKE) run MODULE=test_filter_edge TESTCASE=test_malformed_packets
+
+test_backpressure:
+	$(MAKE) run MODULE=test_filter_edge TESTCASE=test_backpressure_handling
+
+# Individual test cases for performance
+test_throughput:
+	$(MAKE) run MODULE=test_filter_performance TESTCASE=test_maximum_throughput
+
+test_burst:
+	$(MAKE) run MODULE=test_filter_performance TESTCASE=test_burst_traffic
+
+# Individual test cases for protocol compliance
+test_axi_compliance:
+	$(MAKE) run MODULE=test_filter_protocol TESTCASE=test_axi_stream_compliance
+
+test_packet_integrity:
+	$(MAKE) run MODULE=test_filter_protocol TESTCASE=test_packet_integrity
+
+# Individual test cases for statistics
+test_counter_accuracy:
+	$(MAKE) run MODULE=test_filter_stats TESTCASE=test_statistics_counters
+
+test_counter_overflow:
+	$(MAKE) run MODULE=test_filter_stats TESTCASE=test_counter_overflow
+
+# Run all comprehensive test suites
 test_all:
+	@echo "Running all comprehensive test suites..."
 	$(MAKE) test_basic
-	$(MAKE) test_stress  
-	$(MAKE) test_coverage
+	$(MAKE) test_config
+	$(MAKE) test_edge
+	$(MAKE) test_performance
+	$(MAKE) test_protocol
+	$(MAKE) test_stats
+
+# Run functional tests only (faster subset)
+test_functional:
+	@echo "Running functional tests..."
+	$(MAKE) test_basic
+	$(MAKE) test_config
+
+# Run compliance tests only
+test_compliance:
+	@echo "Running compliance tests..."
+	$(MAKE) test_protocol
+	$(MAKE) test_stats
+
+# Run performance tests only
+test_perf:
+	@echo "Running performance tests..."
+	$(MAKE) test_performance
 
 # Internal run target
 run:
@@ -106,14 +181,39 @@ waves:
 
 # Help target
 help:
-	@echo "OpenNIC Filter RX Pipeline Testbench"
+	@echo "OpenNIC Filter RX Pipeline Comprehensive Testbench"
 	@echo ""
-	@echo "Available targets:"
-	@echo "  test          - Run basic functionality test (default)"
-	@echo "  test_basic    - Run basic functionality test"
-	@echo "  test_stress   - Run stress test with many packets"
-	@echo "  test_coverage - Run coverage-focused test"
-	@echo "  test_all      - Run all tests"
+	@echo "Available test suites:"
+	@echo "  test              - Run basic functionality test (default)"
+	@echo "  test_all          - Run all comprehensive test suites"
+	@echo "  test_functional   - Run functional tests only (basic + config)"
+	@echo "  test_compliance   - Run compliance tests only (protocol + stats)"
+	@echo "  test_perf         - Run performance tests only"
+	@echo ""
+	@echo "Individual test suites:"
+	@echo "  test_basic        - Basic filtering functionality (TC-IPV4-*, TC-IPV6-*, TC-MIXED-*)"
+	@echo "  test_config       - Configuration and dynamic tests (TC-CFG-*, TC-DYN-*)"
+	@echo "  test_edge         - Edge cases and error handling (TC-EDGE-*)"
+	@echo "  test_performance  - Performance and throughput tests (TC-PERF-*)"
+	@echo "  test_protocol     - Protocol compliance tests (TC-AXI-*, TC-INT-*)"
+	@echo "  test_stats        - Statistics verification tests (TC-STAT-*)"
+	@echo ""
+	@echo "Individual test cases:"
+	@echo "  test_ipv4_basic      - Basic IPv4 filtering"
+	@echo "  test_ipv6_basic      - Basic IPv6 filtering"
+	@echo "  test_mixed_traffic   - Mixed IPv4/IPv6 traffic"
+	@echo "  test_rule_config     - Rule configuration"
+	@echo "  test_dynamic_reconfig - Dynamic reconfiguration"
+	@echo "  test_malformed       - Malformed packet handling"
+	@echo "  test_backpressure    - Back-pressure handling"
+	@echo "  test_throughput      - Maximum throughput test"
+	@echo "  test_burst           - Burst traffic test"
+	@echo "  test_axi_compliance  - AXI Stream compliance"
+	@echo "  test_packet_integrity - Packet data integrity"
+	@echo "  test_counter_accuracy - Counter accuracy"
+	@echo "  test_counter_overflow - Counter overflow behavior"
+	@echo ""
+	@echo "Utilities:"
 	@echo "  waves         - View waveforms"
 	@echo "  help          - Show this help"
 	@echo ""
@@ -123,8 +223,10 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make test                    # Run basic test with default simulator (Verilator)"
-	@echo "  make test SIM=questa        # Run basic test with Questa"
-	@echo "  make test_stress             # Run stress test"
+	@echo "  make test_all SIM=questa     # Run all tests with Questa"
+	@echo "  make test_functional         # Run functional tests only"
+	@echo "  make test_performance        # Run performance tests"
+	@echo "  make test_ipv4_basic         # Run specific IPv4 test"
 	@echo "  make waves                   # View waveforms"
 
 # Include Cocotb makefiles
