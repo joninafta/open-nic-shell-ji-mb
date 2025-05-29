@@ -1,0 +1,386 @@
+name: Filter RX Pipeline Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tb/tests/filter_rx_pipeline/**'
+      - 'filelists/filter_rx_pipeline.f'
+      - '.github/workflows/filter_rx_pipeline_tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tb/tests/filter_rx_pipeline/**'
+      - 'filelists/filter_rx_pipeline.f'
+      - '.github/workflows/filter_rx_pipeline_tests.yml'
+  schedule:
+    # Run nightly regression tests at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - functional
+          - performance
+          - edge_cases
+          - protocol_compliance
+      simulator:
+        description: 'Simulator to use'
+        required: false
+        default: 'verilator'
+        type: choice
+        options:
+          - verilator
+          - questa
+          - xcelium
+
+env:
+  # Test configuration
+  COCOTB_REDUCED_LOG_FMT: 1
+  COCOTB_LOG_LEVEL: INFO
+  SIM: ${{ github.event.inputs.simulator || 'verilator' }}
+  TEST_TIMEOUT: 3600  # 1 hour timeout
+
+jobs:
+  # Job 1: Quick validation and syntax checks
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate Test Environment
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install Python dependencies
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        pip install -r requirements.txt
+        
+    - name: Validate test syntax and completeness
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        python3 validate_tests.py
+        
+    - name: Check file structure
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        ./setup_test_env.sh --check-only
+
+  # Job 2: Basic functional tests
+  basic_tests:
+    runs-on: ubuntu-latest
+    needs: validate
+    name: Basic Functional Tests
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test_suite:
+          - basic
+          - config
+          - stats
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+        
+    - name: Install Verilator
+      run: |
+        sudo apt-get install -y verilator
+        verilator --version
+        
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Setup test environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        ./setup_test_env.sh
+        
+    - name: Run ${{ matrix.test_suite }} tests
+      timeout-minutes: 30
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        make test_${{ matrix.test_suite }} SIM=verilator
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.test_suite }}
+        path: |
+          tb/tests/filter_rx_pipeline/results/
+          tb/tests/filter_rx_pipeline/sim_build/
+        retention-days: 7
+
+  # Job 3: Advanced tests (edge cases, performance, protocol)
+  advanced_tests:
+    runs-on: ubuntu-latest
+    needs: validate
+    name: Advanced Tests
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test_suite:
+          - edge
+          - performance
+          - protocol
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential verilator
+        
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Setup test environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        ./setup_test_env.sh
+        
+    - name: Run ${{ matrix.test_suite }} tests
+      timeout-minutes: 45
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        make test_${{ matrix.test_suite }} SIM=verilator
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.test_suite }}
+        path: |
+          tb/tests/filter_rx_pipeline/results/
+          tb/tests/filter_rx_pipeline/sim_build/
+        retention-days: 7
+
+  # Job 4: Full regression test (nightly or on-demand)
+  full_regression:
+    runs-on: ubuntu-latest
+    needs: [basic_tests, advanced_tests]
+    name: Full Regression Suite
+    if: github.event_name == 'schedule' || github.event.inputs.test_suite == 'all'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential verilator
+        
+    - name: Setup test environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        ./setup_test_env.sh
+        
+    - name: Run complete test suite
+      timeout-minutes: 60
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        make test_all SIM=verilator
+        
+    - name: Generate test report
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        python3 -c "
+        import os
+        import glob
+        
+        print('=== Filter RX Pipeline Test Report ===')
+        print(f'Commit: {os.environ.get(\"GITHUB_SHA\", \"unknown\")}')
+        print(f'Branch: {os.environ.get(\"GITHUB_REF_NAME\", \"unknown\")}')
+        print(f'Run ID: {os.environ.get(\"GITHUB_RUN_ID\", \"unknown\")}')
+        print()
+        
+        # Look for test results
+        result_files = glob.glob('results/*.xml') + glob.glob('results/*.txt')
+        if result_files:
+            print(f'Found {len(result_files)} result files')
+            for f in result_files:
+                print(f'  - {f}')
+        else:
+            print('No result files found')
+        "
+        
+    - name: Upload comprehensive results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: full-regression-results
+        path: |
+          tb/tests/filter_rx_pipeline/results/
+          tb/tests/filter_rx_pipeline/sim_build/
+          tb/tests/filter_rx_pipeline/*.log
+        retention-days: 30
+
+  # Job 5: Test report generation and notification
+  report:
+    runs-on: ubuntu-latest
+    needs: [basic_tests, advanced_tests]
+    name: Generate Test Report
+    if: always()
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download all test results
+      uses: actions/download-artifact@v4
+      with:
+        path: test-artifacts
+        
+    - name: Generate summary report
+      run: |
+        echo "# Filter RX Pipeline Test Results" > test_summary.md
+        echo "" >> test_summary.md
+        echo "**Commit:** ${{ github.sha }}" >> test_summary.md
+        echo "**Branch:** ${{ github.ref_name }}" >> test_summary.md
+        echo "**Trigger:** ${{ github.event_name }}" >> test_summary.md
+        echo "**Run ID:** ${{ github.run_id }}" >> test_summary.md
+        echo "" >> test_summary.md
+        
+        echo "## Test Suite Results" >> test_summary.md
+        echo "" >> test_summary.md
+        
+        # Check job results
+        if [ "${{ needs.basic_tests.result }}" == "success" ]; then
+          echo "✅ **Basic Tests:** PASSED" >> test_summary.md
+        else
+          echo "❌ **Basic Tests:** FAILED" >> test_summary.md
+        fi
+        
+        if [ "${{ needs.advanced_tests.result }}" == "success" ]; then
+          echo "✅ **Advanced Tests:** PASSED" >> test_summary.md
+        else
+          echo "❌ **Advanced Tests:** FAILED" >> test_summary.md
+        fi
+        
+        echo "" >> test_summary.md
+        echo "## Artifacts Generated" >> test_summary.md
+        echo "" >> test_summary.md
+        
+        if [ -d test-artifacts ]; then
+          find test-artifacts -name "*.xml" -o -name "*.log" -o -name "*.txt" | head -20 | while read file; do
+            echo "- $file" >> test_summary.md
+          done
+        fi
+        
+        echo "" >> test_summary.md
+        echo "---" >> test_summary.md
+        echo "*Generated by Filter RX Pipeline CI/CD Pipeline*" >> test_summary.md
+        
+    - name: Upload test summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-summary
+        path: test_summary.md
+        retention-days: 30
+        
+    - name: Comment PR with results
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request'
+      with:
+        script: |
+          const fs = require('fs');
+          const summary = fs.readFileSync('test_summary.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });
+
+  # Job 6: Performance benchmarking (on main branch)
+  performance_benchmark:
+    runs-on: ubuntu-latest
+    name: Performance Benchmark
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential verilator
+        cd tb/tests/filter_rx_pipeline
+        ./setup_test_env.sh
+        
+    - name: Run performance benchmarks
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        make test_performance SIM=verilator EXTRA_ARGS="--benchmark"
+        
+    - name: Store benchmark results
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        tool: 'customSmallerIsBetter'
+        output-file-path: tb/tests/filter_rx_pipeline/results/benchmark.json
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: true
+        comment-on-alert: true
+        alert-threshold: '200%'
+        fail-on-alert: true

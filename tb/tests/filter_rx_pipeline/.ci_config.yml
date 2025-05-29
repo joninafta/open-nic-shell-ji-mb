@@ -1,0 +1,257 @@
+#
+# CI/CD Configuration for Filter RX Pipeline Tests
+# This file contains configuration settings for automated testing
+
+# Test execution settings
+test_config:
+  # Default simulator for CI/CD
+  default_simulator: verilator
+  
+  # Supported simulators
+  supported_simulators:
+    - verilator
+    - questa
+    - xcelium
+  
+  # Test timeout settings (in minutes)
+  timeouts:
+    basic_tests: 30
+    advanced_tests: 45
+    full_regression: 60
+    performance_tests: 45
+  
+  # Test suite definitions
+  test_suites:
+    quick:
+      description: "Quick validation tests for PRs"
+      tests:
+        - basic
+        - config
+      timeout: 20
+      
+    standard:
+      description: "Standard test suite for branch pushes"
+      tests:
+        - basic
+        - config
+        - edge
+        - protocol
+        - stats
+      timeout: 45
+      
+    full:
+      description: "Complete regression test suite"
+      tests:
+        - basic
+        - config
+        - edge
+        - performance
+        - protocol
+        - stats
+      timeout: 60
+      
+    performance:
+      description: "Performance benchmarking suite"
+      tests:
+        - performance
+      timeout: 45
+      benchmark: true
+
+# Environment requirements
+environment:
+  python_version: "3.9"
+  
+  # Required Python packages (from requirements.txt)
+  python_packages:
+    - cocotb>=1.8.0
+    - cocotb-bus>=0.2.1
+    - scapy>=2.5.0
+    - pytest>=7.0.0
+    - pyyaml>=6.0
+    - numpy>=1.21.0
+    - matplotlib>=3.5.0
+    
+  # System packages for Ubuntu CI runners
+  system_packages:
+    - build-essential
+    - verilator
+    - git
+    - python3-dev
+    - python3-pip
+    
+  # Optional packages for advanced simulators
+  optional_packages:
+    questa:
+      - questa-sim
+    xcelium:
+      - xcelium
+
+# Trigger configuration
+triggers:
+  # File patterns that trigger CI
+  trigger_patterns:
+    - "src/**"
+    - "tb/tests/filter_rx_pipeline/**"
+    - "filelists/filter_rx_pipeline.f"
+    - ".github/workflows/filter_rx_pipeline_tests.yml"
+    - ".ci_config.yml"
+  
+  # Branch protection
+  protected_branches:
+    - main
+    - develop
+    
+  # Automatic triggers
+  auto_triggers:
+    pull_request: "quick"
+    push_main: "standard"
+    push_develop: "standard"
+    nightly: "full"
+    weekly: "performance"
+
+# Notification settings
+notifications:
+  # Slack webhook for notifications (if configured)
+  slack:
+    enabled: false
+    webhook_url: ""
+    channels:
+      success: "#ci-success"
+      failure: "#ci-alerts"
+      
+  # Email notifications
+  email:
+    enabled: false
+    recipients: []
+    
+  # GitHub notifications
+  github:
+    enabled: true
+    pr_comments: true
+    status_checks: true
+
+# Artifact management
+artifacts:
+  # Retention periods
+  retention:
+    test_results: 7  # days
+    performance_data: 30  # days
+    full_regression: 30  # days
+    logs: 7  # days
+  
+  # Artifact types to collect
+  collect:
+    - "results/*.xml"
+    - "results/*.log"
+    - "results/*.txt"
+    - "results/*.json"
+    - "sim_build/**/*.log"
+    - "*.log"
+  
+  # Performance data for benchmarking
+  benchmark_data:
+    enabled: true
+    format: "json"
+    metrics:
+      - throughput_gbps
+      - latency_cycles
+      - packet_rate_mpps
+      - efficiency_percent
+
+# Quality gates
+quality_gates:
+  # Test pass rates
+  test_pass_rate:
+    minimum: 100  # All tests must pass
+    
+  # Performance thresholds
+  performance:
+    throughput_gbps: 
+      minimum: 200  # 250MHz * 512-bit = 200+ Gbps theoretical
+    latency_cycles:
+      maximum: 10   # Maximum pipeline latency
+    packet_rate_mpps:
+      minimum: 100  # Minimum packet rate
+      
+  # Code coverage (if enabled)
+  coverage:
+    enabled: false
+    minimum_percent: 90
+
+# Regression testing
+regression:
+  # Baseline comparison
+  baseline:
+    enabled: true
+    reference_branch: "main"
+    performance_tolerance: 5  # percent
+    
+  # Historical tracking
+  history:
+    enabled: true
+    retention_days: 90
+    
+  # Trend analysis
+  trends:
+    enabled: true
+    alert_threshold: 10  # percent degradation
+
+# Advanced features
+advanced:
+  # Parallel execution
+  parallel_execution:
+    enabled: true
+    max_jobs: 4
+    
+  # Test sharding for large suites
+  test_sharding:
+    enabled: false
+    shard_count: 4
+    
+  # Cache optimization
+  caching:
+    enabled: true
+    cache_keys:
+      - python_deps
+      - sim_build
+      - test_data
+      
+  # Resource limits
+  resources:
+    memory_gb: 8
+    cpu_cores: 4
+    disk_gb: 20
+
+# Debugging and development
+debug:
+  # Enable debug mode for CI runs
+  debug_mode: false
+  
+  # Verbose logging
+  verbose_logging: false
+  
+  # Keep artifacts on failure
+  keep_artifacts_on_failure: true
+  
+  # SSH access for debugging (if supported)
+  ssh_debug: false
+
+# Integration settings
+integrations:
+  # GitHub integration
+  github:
+    status_checks: true
+    required_checks:
+      - "validate"
+      - "basic_tests"
+      - "advanced_tests"
+    
+  # Jira integration (if used)
+  jira:
+    enabled: false
+    project_key: ""
+    
+  # Confluence documentation (if used)
+  confluence:
+    enabled: false
+    space_key: ""
