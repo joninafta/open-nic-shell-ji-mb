@@ -68,24 +68,36 @@ jobs:
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/pip
+          tb/tests/filter_rx_pipeline/venv
+        key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-python-
           
+    - name: Create and activate virtual environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        
     - name: Install Python dependencies
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         pip install -r requirements.txt
         
     - name: Validate test syntax and completeness
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         python3 validate_tests.py
         
     - name: Check file structure
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         ./setup_test_env.sh --check-only
 
   # Job 2: Basic functional tests
