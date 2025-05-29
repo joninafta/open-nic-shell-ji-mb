@@ -281,7 +281,7 @@ ci_performance:
 		'commit': '$(shell git rev-parse HEAD 2>/dev/null || echo unknown)',
 		'branch': '$(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)',
 		'simulator': '$(SIM)',
-		'throughput_gbps': 200.0,  # Placeholder - would be populated by actual test
+		'throughput_gbps': 200.0,  # Placeholder - would be populated bfgy actual test
 		'latency_cycles': 5,       # Placeholder - would be populated by actual test
 		'packet_rate_mpps': 150.0  # Placeholder - would be populated by actual test
 	}

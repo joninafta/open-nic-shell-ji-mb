@@ -200,32 +200,46 @@ validate_test_files() {
     print_info "Validating test files..."
     
     if [[ -f "$SCRIPT_DIR/validate_tests.py" ]]; then
-        python3 "$SCRIPT_DIR/validate_tests.py" --run-syntax-check
-        print_status "Test file validation completed"
+        print_info "Running test validation script..."
+        if python3 "$SCRIPT_DIR/validate_tests.py" --run-syntax-check; then
+            print_status "Test file validation completed"
+        else
+            print_error "Test validation failed"
+            return 1
+        fi
     else
-        print_warning "Test validation script not found"
+        print_warning "Test validation script not found at $SCRIPT_DIR/validate_tests.py"
     fi
 }
 
 run_sample_test() {
     print_info "Running sample syntax check..."
     
+    # Check if utils directory exists
+    if [[ ! -d "$SCRIPT_DIR/utils" ]]; then
+        print_error "Utils directory not found at $SCRIPT_DIR/utils"
+        return 1
+    fi
+    
     # Try to import one of our test modules
-    python3 -c "
+    if python3 -c "
 import sys
 sys.path.append('$SCRIPT_DIR/utils')
 try:
-    from test_utils import TestConfig
+    from test_utils import FilterRxTestbench
     print('✅ Test utilities import successfully')
 except ImportError as e:
     print(f'❌ Import error: {e}')
     sys.exit(1)
-" || {
+except Exception as e:
+    print(f'❌ Unexpected error: {e}')
+    sys.exit(1)
+"; then
+        print_status "Sample test passed"
+    else
         print_error "Failed to import test utilities"
         return 1
-    }
-    
-    print_status "Sample test passed"
+    fi
 }
 
 print_summary() {
@@ -309,8 +323,14 @@ main() {
     check_simulator
     
     if [[ "$check_only" != "true" ]]; then
-        validate_test_files
-        run_sample_test
+        if ! validate_test_files; then
+            print_error "Test file validation failed"
+            exit 1
+        fi
+        if ! run_sample_test; then
+            print_error "Sample test failed"
+            exit 1
+        fi
         print_summary
     fi
     

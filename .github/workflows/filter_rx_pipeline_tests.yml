@@ -88,6 +88,11 @@ jobs:
         source venv/bin/activate
         pip install -r requirements.txt
         
+    - name: Install system dependencies for validation
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential verilator
+        
     - name: Validate test syntax and completeness
       run: |
         cd tb/tests/filter_rx_pipeline
@@ -98,6 +103,12 @@ jobs:
       run: |
         cd tb/tests/filter_rx_pipeline
         source venv/bin/activate
+        echo "=== Environment Debug ==="
+        which python3
+        python3 --version
+        which verilator || echo "Verilator not found"
+        verilator --version || echo "Verilator version check failed"
+        echo "=== Running setup check ==="
         ./setup_test_env.sh --check-only
 
   # Job 2: Basic functional tests
