@@ -6,7 +6,20 @@ Demonstrates the testbench environment usage.
 import cocotb
 from cocotb.triggers import Timer
 import os
+import sys
 import yaml
+
+# Add tb directory to Python path for imports
+project_root = os.environ.get('PROJECT_ROOT', '../../../..')
+tb_path = os.path.join(project_root, 'tb')
+tb_path_abs = os.path.abspath(tb_path)
+print(f"DEBUG: PROJECT_ROOT = {project_root}")
+print(f"DEBUG: tb_path = {tb_path}")
+print(f"DEBUG: tb_path_abs = {tb_path_abs}")
+print(f"DEBUG: tb_path exists = {os.path.exists(tb_path_abs)}")
+if tb_path_abs not in sys.path:
+    sys.path.insert(0, tb_path_abs)
+print(f"DEBUG: sys.path = {sys.path[:3]}")  # Print first 3 entries
 
 # Import the testbench environment
 from tb.env import FilterRxPipelineEnvironment, Config
