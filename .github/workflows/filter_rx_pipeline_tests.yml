@@ -136,18 +136,30 @@ jobs:
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/pip
+          tb/tests/filter_rx_pipeline/venv
+        key: ${{ runner.os }}-python-basic-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Create and activate virtual environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
         
     - name: Setup test environment
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
+        pip install -r requirements.txt
         ./setup_test_env.sh
         
     - name: Run ${{ matrix.test_suite }} tests
       timeout-minutes: 30
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
         make test_${{ matrix.test_suite }} SIM=verilator
         
     - name: Upload test results
@@ -191,12 +203,23 @@ jobs:
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/pip
+          tb/tests/filter_rx_pipeline/venv
+        key: ${{ runner.os }}-python-advanced-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Create and activate virtual environment
+      run: |
+        cd tb/tests/filter_rx_pipeline
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
         
     - name: Setup test environment
       run: |
         cd tb/tests/filter_rx_pipeline
+        source venv/bin/activate
+        pip install -r requirements.txt
         ./setup_test_env.sh
         
     - name: Run ${{ matrix.test_suite }} tests
