@@ -7,7 +7,7 @@ import cocotb
 from cocotb.triggers import RisingEdge, ReadOnly
 from typing import Any, Optional, Dict, List
 
-from ..base import Monitor, Transaction
+from ...base import Monitor, Transaction
 from .driver import AxiStreamTransaction
 
 

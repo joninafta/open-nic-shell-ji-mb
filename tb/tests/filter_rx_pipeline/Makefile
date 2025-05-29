@@ -57,10 +57,10 @@ ifeq ($(SIM),verilator)
 endif
 
 # Test modules (Python)
-MODULE = test_filter_basic
+MODULE ?= test_filter_basic
 
 # Python path setup - ensure tb package is importable
-PYTHONPATH := $(TB_ROOT):$(PYTHONPATH)
+PYTHONPATH := $(PROJECT_ROOT):$(PYTHONPATH)
 export PYTHONPATH
 
 # Test targets

@@ -8,7 +8,7 @@ from cocotb.triggers import RisingEdge, ReadOnly
 from typing import Any, Optional, Dict, List
 from dataclasses import dataclass
 
-from ..base import Monitor, Transaction
+from ...base import Monitor, Transaction
 from ..axi_stream import AxiStreamMonitor, AxiStreamTransaction
 from .driver import FilterPacket
 

@@ -8,7 +8,7 @@ from cocotb.triggers import RisingEdge, Timer
 from typing import Any, Optional, Dict, List, Tuple
 import random
 
-from ..base import Driver
+from ...base import Driver
 from ..axi_stream import AxiStreamDriver, AxiStreamTransaction
 
 
