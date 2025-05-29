@@ -1,16 +1,16 @@
 #!/bin/bash
-"""
-Filter RX Pipeline Test Environment Setup Script
-
-This script sets up the test environment for the Filter RX Pipeline module.
-It installs required Python packages, sets up the verification environment,
-and validates the installation.
-
-Usage:
-    ./setup_test_env.sh
-    ./setup_test_env.sh --check-only
-    ./setup_test_env.sh --install-cocotb
-"""
+#
+# Filter RX Pipeline Test Environment Setup Script
+#
+# This script sets up the test environment for the Filter RX Pipeline module.
+# It installs required Python packages, sets up the verification environment,
+# and validates the installation.
+#
+# Usage:
+#     ./setup_test_env.sh
+#     ./setup_test_env.sh --check-only
+#     ./setup_test_env.sh --install-cocotb
+#
 
 set -e  # Exit on any error
 
