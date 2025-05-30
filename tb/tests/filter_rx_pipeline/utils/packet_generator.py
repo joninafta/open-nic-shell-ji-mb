@@ -251,6 +251,114 @@ class TestPackets:
         ]
 
 
+class IPv4PacketTemplate:
+    """Template for IPv4 packet generation."""
+    
+    @staticmethod
+    def http_packet(dst_ip: str = "192.168.1.1", payload_size: int = 0) -> PacketConfig:
+        """Generate IPv4 HTTP packet configuration."""
+        return TestPackets.ipv4_http_packet(dst_ip, payload_size)
+    
+    @staticmethod 
+    def https_packet(dst_ip: str = "192.168.1.2", payload_size: int = 64) -> PacketConfig:
+        """Generate IPv4 HTTPS packet configuration."""
+        return TestPackets.ipv4_https_packet(dst_ip, payload_size)
+    
+    @staticmethod
+    def udp_packet(dst_ip: str = "192.168.1.1", dst_port: int = 53, payload_size: int = 32) -> PacketConfig:
+        """Generate IPv4 UDP packet configuration."""
+        return PacketConfig(
+            ip_version=4,
+            dst_ip=dst_ip,
+            dst_port=dst_port,
+            src_port=12345,
+            protocol="UDP",
+            payload_size=payload_size
+        )
+
+
+class IPv6PacketTemplate:
+    """Template for IPv6 packet generation."""
+    
+    @staticmethod
+    def http_packet(dst_ip: str = "2001:db8::1", payload_size: int = 0) -> PacketConfig:
+        """Generate IPv6 HTTP packet configuration."""
+        return TestPackets.ipv6_http_packet(dst_ip, payload_size)
+    
+    @staticmethod
+    def https_packet(dst_ip: str = "2001:db8::2", payload_size: int = 1436) -> PacketConfig:
+        """Generate IPv6 HTTPS packet configuration."""
+        return TestPackets.ipv6_https_packet(dst_ip, payload_size)
+    
+    @staticmethod
+    def udp_packet(dst_ip: str = "2001:db8::1", dst_port: int = 53, payload_size: int = 32) -> PacketConfig:
+        """Generate IPv6 UDP packet configuration."""
+        return PacketConfig(
+            ip_version=6,
+            dst_ip=dst_ip,
+            dst_port=dst_port,
+            src_port=12345,
+            protocol="UDP",
+            payload_size=payload_size
+        )
+
+
+class UDPPacketTemplate:
+    """Template for UDP packet generation (IPv4/IPv6)."""
+    
+    @staticmethod
+    def ipv4_packet(dst_ip: str = "192.168.1.1", dst_port: int = 53, payload_size: int = 32) -> PacketConfig:
+        """Generate IPv4 UDP packet configuration."""
+        return PacketConfig(
+            ip_version=4,
+            dst_ip=dst_ip,
+            dst_port=dst_port,
+            src_port=12345,
+            protocol="UDP",
+            payload_size=payload_size
+        )
+    
+    @staticmethod
+    def ipv6_packet(dst_ip: str = "2001:db8::1", dst_port: int = 53, payload_size: int = 32) -> PacketConfig:
+        """Generate IPv6 UDP packet configuration."""
+        return PacketConfig(
+            ip_version=6,
+            dst_ip=dst_ip,
+            dst_port=dst_port,
+            src_port=12345,
+            protocol="UDP",
+            payload_size=payload_size
+        )
+
+
+class TCPPacketTemplate:
+    """Template for TCP packet generation (IPv4/IPv6)."""
+    
+    @staticmethod
+    def ipv4_packet(dst_ip: str = "192.168.1.1", dst_port: int = 80, payload_size: int = 0) -> PacketConfig:
+        """Generate IPv4 TCP packet configuration."""
+        return PacketConfig(
+            ip_version=4,
+            dst_ip=dst_ip,
+            dst_port=dst_port,
+            src_port=12345,
+            protocol="TCP",
+            payload_size=payload_size
+        )
+    
+    @staticmethod
+    def ipv6_packet(dst_ip: str = "2001:db8::1", dst_port: int = 80, payload_size: int = 0) -> PacketConfig:
+        """Generate IPv6 TCP packet configuration."""
+        return PacketConfig(
+            ip_version=6,
+            dst_ip=dst_ip,
+            dst_port=dst_port,
+            src_port=12345,
+            protocol="TCP",
+            payload_size=payload_size
+        )
+
+
 def create_packet_sequence(configs: List[PacketConfig]) -> List[bytes]:
     """Create a sequence of packets from configurations."""
     generator = PacketGenerator()
