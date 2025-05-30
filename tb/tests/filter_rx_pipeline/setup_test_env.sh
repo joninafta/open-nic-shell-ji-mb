@@ -139,6 +139,7 @@ check_cocotb() {
                 print_info "Consider adding it to your PATH"
             fi
         fi
+        return 0
     else
         print_error "Cocotb not found"
         return 1
@@ -151,6 +152,7 @@ check_scapy() {
     if python3 -c "import scapy" 2>/dev/null; then
         SCAPY_VERSION=$(python3 -c "from scapy import VERSION; print(VERSION)" 2>/dev/null || echo "unknown")
         print_status "Scapy found: version $SCAPY_VERSION"
+        return 0
     else
         print_error "Scapy not found"
         return 1
@@ -164,7 +166,7 @@ check_simulator() {
     
     # Check for Verilator
     if command -v verilator &> /dev/null; then
-        VERILATOR_VERSION=$(verilator --version 2>&1 | head -n1 | cut -d" " -f2 || echo "unknown")
+        VERILATOR_VERSION=$(verilator --version 2>&1 | head -n1 | awk '{print $2}' 2>/dev/null || echo "unknown")
         print_status "Verilator found: $VERILATOR_VERSION"
         ((SIMULATORS_FOUND++))
     fi
@@ -194,6 +196,9 @@ check_simulator() {
     else
         print_status "$SIMULATORS_FOUND simulator(s) available"
     fi
+    
+    # Explicitly return success
+    return 0
 }
 
 validate_test_files() {
