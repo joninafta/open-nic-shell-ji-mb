@@ -47,6 +47,8 @@ env:
   COCOTB_LOG_LEVEL: INFO
   SIM: ${{ github.event.inputs.simulator || 'verilator' }}
   TEST_TIMEOUT: 3600  # 1 hour timeout
+  CI: true  # Enable CI mode for test optimization
+  GITHUB_ACTIONS: true  # Additional CI environment indicator
 
 jobs:
   # Job 1: Quick validation and syntax checks
@@ -174,11 +176,13 @@ jobs:
         ./setup_test_env.sh
         
     - name: Run ${{ matrix.test_suite }} tests
-      timeout-minutes: 30
+      timeout-minutes: 25  # Reduced timeout with CI optimizations
       run: |
         cd tb/tests/filter_rx_pipeline
         source venv/bin/activate
-        make test_${{ matrix.test_suite }} SIM=verilator
+        echo "=== Starting ${{ matrix.test_suite }} tests in CI mode ==="
+        make test_${{ matrix.test_suite }} SIM=verilator CI=true
+        echo "=== ${{ matrix.test_suite }} tests completed ==="
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -241,11 +245,13 @@ jobs:
         ./setup_test_env.sh
         
     - name: Run ${{ matrix.test_suite }} tests
-      timeout-minutes: 45
+      timeout-minutes: 25  # Reduced timeout with CI optimizations
       run: |
         cd tb/tests/filter_rx_pipeline
         source venv/bin/activate
-        make test_${{ matrix.test_suite }} SIM=verilator
+        echo "=== Starting ${{ matrix.test_suite }} tests in CI mode ==="
+        make test_${{ matrix.test_suite }} SIM=verilator CI=true
+        echo "=== ${{ matrix.test_suite }} tests completed ==="
         
     - name: Upload test results
       uses: actions/upload-artifact@v4

@@ -10,15 +10,41 @@ Test Cases Covered:
 - TC-EDGE-005: Back-pressure handling
 """
 
+import os
+import logging
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge, Timer, with_timeout
 from cocotb.log import SimLog
+from cocotb.result import TestFailure
 import random
 
 # Import our utilities
 from utils.test_utils import FilterRxTestbench, TestResult, CommonRules
 from utils.packet_generator import PacketGenerator, PacketConfig, TestPackets
 from utils.statistics_checker import create_statistics_verifier
+
+# CI Environment Detection
+CI_MODE = os.getenv('CI', 'false').lower() == 'true' or os.getenv('GITHUB_ACTIONS', 'false').lower() == 'true'
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# CI-optimized configuration
+if CI_MODE:
+    CI_CONFIG = {
+        'test_timeout_seconds': 300,  # 5 minutes per edge test in CI
+        'packet_count_limit': 10,     # Reduced packet counts
+        'enable_expensive_tests': False
+    }
+else:
+    CI_CONFIG = {
+        'test_timeout_seconds': 1800, # 30 minutes locally
+        'packet_count_limit': 50,
+        'enable_expensive_tests': True
+    }
+
+logger.info(f"Edge cases running in {'CI' if CI_MODE else 'LOCAL'} mode")
 
 
 class TestEdgeCases:
@@ -27,23 +53,33 @@ class TestEdgeCases:
     def __init__(self):
         self.log = SimLog("test_edge")
         self.results = []
+        self.test_failures = []  # Track failures for proper reporting
     
     async def setup_test(self, dut):
-        """Common test setup."""
-        self.tb = FilterRxTestbench(dut)
-        self.checker, self.tracker = create_statistics_verifier(dut)
-        
-        # Initialize DUT
-        await self.tb.reset()
-        await self.tb.clear_rules()
-        
-        # Reset statistics tracking
-        self.tracker.reset()
-        await self.checker.reset_statistics()
+        """Common test setup with error handling."""
+        try:
+            self.tb = FilterRxTestbench(dut)
+            self.checker, self.tracker = create_statistics_verifier(dut)
+            
+            # Initialize DUT
+            await self.tb.reset()
+            await self.tb.clear_rules()
+            
+            # Reset statistics tracking
+            self.tracker.reset()
+            await self.checker.reset_statistics()
+            
+        except Exception as e:
+            self.log.error(f"Setup failed: {e}")
+            raise TestFailure(f"Test setup failed: {e}")
     
     async def teardown_test(self):
-        """Common test teardown."""
-        await Timer(200, units='ns')  # Longer delay for edge cases
+        """Common test teardown with error handling."""
+        try:
+            await Timer(200, units='ns')  # Longer delay for edge cases
+        except Exception as e:
+            self.log.error(f"Teardown error: {e}")
+            # Don't re-raise teardown errors to avoid masking test failures
 
     async def tc_edge_001(self, dut):
         """TC-EDGE-001: Malformed packets and error handling."""
@@ -442,19 +478,72 @@ async def test_edge_005(dut):
     assert result.passed, f"TC-EDGE-005 failed: {result.message}"
 
 
-# Test suite runner
+# Test suite runner with proper error handling
 @cocotb.test()
 async def test_edge_cases_suite(dut):
-    """Run complete edge cases test suite."""
+    """Run complete edge cases test suite with proper error handling and timeout protection."""
     test_class = TestEdgeCases()
     
+    try:
+        # Wrap entire test suite with timeout
+        await with_timeout(
+            _run_edge_cases_suite_internal(test_class, dut),
+            timeout_time=CI_CONFIG['test_timeout_seconds'],
+            timeout_unit='sec'
+        )
+        
+    except Exception as e:
+        # Ensure any test failures are properly reported
+        error_msg = f"Edge cases test suite failed: {e}"
+        test_class.log.error(error_msg)
+        
+        # Check if we have specific test failures to report
+        if hasattr(test_class, 'test_failures') and test_class.test_failures:
+            detailed_msg = f"{error_msg}. Failed tests: {test_class.test_failures}"
+            raise TestFailure(detailed_msg)
+        else:
+            raise TestFailure(error_msg)
+
+
+async def _run_edge_cases_suite_internal(test_class, dut):
+    """Internal function to run the edge cases test suite."""
     # Run all edge case tests
     results = []
-    results.append(await test_class.tc_edge_001(dut))
-    results.append(await test_class.tc_edge_002(dut))
-    results.append(await test_class.tc_edge_003(dut))
-    results.append(await test_class.tc_edge_004(dut))
-    results.append(await test_class.tc_edge_005(dut))
+    
+    try:
+        results.append(await test_class.tc_edge_001(dut))
+    except Exception as e:
+        test_class.log.error(f"TC-EDGE-001 failed with exception: {e}")
+        test_class.test_failures.append(f"TC-EDGE-001: {e}")
+        results.append(TestResult("TC-EDGE-001", "Exception", passed=False, message=str(e)))
+    
+    try:
+        results.append(await test_class.tc_edge_002(dut))
+    except Exception as e:
+        test_class.log.error(f"TC-EDGE-002 failed with exception: {e}")
+        test_class.test_failures.append(f"TC-EDGE-002: {e}")
+        results.append(TestResult("TC-EDGE-002", "Exception", passed=False, message=str(e)))
+    
+    try:
+        results.append(await test_class.tc_edge_003(dut))
+    except Exception as e:
+        test_class.log.error(f"TC-EDGE-003 failed with exception: {e}")
+        test_class.test_failures.append(f"TC-EDGE-003: {e}")
+        results.append(TestResult("TC-EDGE-003", "Exception", passed=False, message=str(e)))
+    
+    try:
+        results.append(await test_class.tc_edge_004(dut))
+    except Exception as e:
+        test_class.log.error(f"TC-EDGE-004 failed with exception: {e}")
+        test_class.test_failures.append(f"TC-EDGE-004: {e}")
+        results.append(TestResult("TC-EDGE-004", "Exception", passed=False, message=str(e)))
+    
+    try:
+        results.append(await test_class.tc_edge_005(dut))
+    except Exception as e:
+        test_class.log.error(f"TC-EDGE-005 failed with exception: {e}")
+        test_class.test_failures.append(f"TC-EDGE-005: {e}")
+        results.append(TestResult("TC-EDGE-005", "Exception", passed=False, message=str(e)))
     
     # Print summary
     passed = sum(1 for r in results if r.passed)
@@ -469,9 +558,11 @@ async def test_edge_cases_suite(dut):
         status = "PASSED" if result.passed else "FAILED"
         test_class.log.info(f"{result.test_id:20} - {status:6} - {result.message}")
     
-    # Overall result
+    # Overall result - ensure failures are properly propagated
     if passed == total:
         test_class.log.info("EDGE CASES TEST SUITE: ALL TESTS PASSED")
     else:
-        test_class.log.error(f"EDGE CASES TEST SUITE: {total - passed} TESTS FAILED")
-        assert False, f"Edge cases test suite failed: {passed}/{total} tests passed"
+        failed_tests = [r.test_id for r in results if not r.passed]
+        error_msg = f"Edge cases test suite failed: {passed}/{total} tests passed. Failed: {failed_tests}"
+        test_class.log.error(error_msg)
+        raise TestFailure(error_msg)
