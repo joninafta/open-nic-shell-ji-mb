@@ -33,7 +33,203 @@
 
 * **Compatibility**: Cocotb tests complement existing Vivado simulation in `script/tb/`
 * **Shared Resources**: Reuse existing constraint files from `constr/` for board awareness
-* **IP Integration**: Leverage Vivado IP definitions from `src/*/vivado_ip/` foldersIdentify the subsystem**: Choose from `qdma_subsystem`, `cmac_subsystem`, `packet_adapter`, `system_config`, or `utility` modules.
+* **IP Integration**: Leverage Vivado IP definitions from `src/*/vivado_ip/` folders
+
+## 8. Local-CI Validation Alignment
+
+### Problem Statement
+
+A critical challenge in verification environments is ensuring **validation parity** between local development and CI environments. Discrepancies can lead to:
+- Tests passing locally but failing in CI due to different validation depths
+- False confidence in code quality during development
+- Delayed detection of import errors and missing dependencies
+- Reduced developer productivity due to CI-only failures
+
+### Root Cause Analysis: Validation Depth Mismatch
+
+The investigation of Filter RX Pipeline test failures revealed fundamental differences between local and CI validation approaches:
+
+**Local Validation (Syntax-Only)**:
+```bash
+# setup_test_env.sh runs syntax validation only
+python validate_tests.py --run-syntax-check
+```
+- Performs AST parsing and syntax validation
+- Detects syntax errors, indentation issues
+- **Does NOT** perform actual imports or runtime validation
+- **Does NOT** detect missing functions or broken import paths
+
+**CI Validation (Full Runtime)**:
+```bash
+# CI runs full runtime import validation
+python validate_tests.py  # no flags = full validation
+```
+- Performs actual module imports using `importlib.util.spec_from_file_location()`
+- Executes module initialization code
+- **DOES** detect missing functions, broken imports, path resolution issues
+- **DOES** catch runtime import dependencies
+
+### Recommended Solutions
+
+#### 1. Align Local Validation with CI
+
+**Immediate Fix**: Modify local validation scripts to match CI behavior:
+
+```bash
+# In setup_test_env.sh - replace syntax-only with full validation
+python validate_tests.py  # Remove --run-syntax-check flag
+```
+
+**Benefits**:
+- Immediate parity between local and CI validation
+- Earlier detection of import issues during development
+- Reduced CI failure rate due to preventable errors
+
+#### 2. Implement Dual-Stage Validation
+
+**Enhanced Approach**: Provide both fast and comprehensive validation options:
+
+```bash
+# Fast feedback for rapid development iteration
+python validate_tests.py --syntax-only
+
+# Comprehensive validation matching CI (run before commits)
+python validate_tests.py --full-validation
+```
+
+**Implementation Strategy**:
+- Default local behavior should match CI (full validation)
+- Provide explicit `--syntax-only` flag for rapid iteration
+- Document when each mode should be used
+
+#### 3. Runtime Import Diagnostic Tools
+
+**Create CI-Equivalent Local Tools**: Develop scripts that replicate CI validation methodology:
+
+```python
+# Example: test_runtime_imports.py
+import importlib.util
+import sys
+import os
+
+def validate_runtime_imports(test_file_path):
+    """Perform CI-style runtime import validation locally"""
+    try:
+        spec = importlib.util.spec_from_file_location("test_module", test_file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return True, "Import successful"
+    except Exception as e:
+        return False, f"Import failed: {e}"
+```
+
+**Usage**:
+- Run diagnostic tools during development
+- Catch import issues before committing
+- Validate dependency resolution locally
+
+#### 4. Path Resolution Best Practices
+
+**Consistent Import Strategy**: Establish patterns that work reliably across environments:
+
+```python
+# Robust path resolution for test imports
+import os
+import sys
+
+# Add project root to Python path
+current_test_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.join(current_test_dir, '../../..')
+sys.path.insert(0, project_root)
+
+# Now imports work consistently in both local and CI
+import tb.tests.common_utils as common_utils
+```
+
+**Avoid Problematic Patterns**:
+```python
+# AVOID: Relative path strings that vary by execution context
+sys.path.append('../../../../tb')  # Fragile
+
+# PREFER: Computed absolute paths from file location
+project_root = os.path.abspath(os.path.join(__file__, '../../..'))
+sys.path.insert(0, project_root)
+```
+
+### Implementation Guidelines for Future Projects
+
+#### 1. Design Validation Strategy Early
+
+**During Project Setup**:
+- Define validation requirements for both local and CI environments
+- Establish what level of validation is needed (syntax vs. runtime vs. execution)
+- Document the rationale for validation depth choices
+
+#### 2. Environment Parity Checklist
+
+**Before Implementing Validation Scripts**:
+- [ ] Local validation depth matches CI validation depth
+- [ ] Import path resolution strategies are environment-agnostic
+- [ ] Missing dependency detection works in both environments
+- [ ] Validation failure modes are consistent (same errors, same exit codes)
+
+#### 3. Testing Validation Tools
+
+**Validate the Validators**:
+- Test validation scripts against known-good and known-bad code
+- Verify that local validation catches the same issues as CI
+- Include validation tool testing in regression suites
+
+#### 4. Developer Workflow Integration
+
+**Make Comprehensive Validation Easy**:
+```bash
+# Pre-commit hook example
+#!/bin/bash
+echo "Running comprehensive validation (matching CI)..."
+python validate_tests.py --full-validation
+if [ $? -ne 0 ]; then
+    echo "Validation failed - fix errors before committing"
+    exit 1
+fi
+```
+
+#### 5. Documentation Requirements
+
+**For Every Validation Script**:
+- Document the validation depth and methodology
+- Explain differences between validation modes (if multiple exist)
+- Provide examples of what each validation level catches
+- Include troubleshooting guides for common validation failures
+
+### Lessons Learned from Filter RX Pipeline Investigation
+
+1. **Syntax validation alone is insufficient** for complex projects with runtime dependencies
+2. **Import path resolution is environment-sensitive** and requires careful absolute path handling
+3. **Missing function detection requires actual import execution**, not just syntax parsing
+4. **CI validation methodology should be replicable locally** for effective development workflows
+5. **Validation discrepancies lead to technical debt** in the form of CI-only debugging cycles
+
+### Future Enhancements
+
+#### Automated Validation Alignment
+
+**Tool Development Opportunities**:
+- Automated validation parity checker
+- CI environment simulator for local testing
+- Import dependency analyzer
+- Path resolution validator
+
+#### Integration with Development Tools
+
+**IDE and Editor Integration**:
+- VS Code extensions for validation feedback
+- Pre-commit hooks with validation
+- Real-time import validation during editing
+
+## 9. Extending to New OpenNIC Subsystems
+
+1. **Identify the subsystem**: Choose from `qdma_subsystem`, `cmac_subsystem`, `packet_adapter`, `system_config`, or `utility` modules.
 2. **Create filelist**: Add a new `filelists/<subsystem>.f` file listing all RTL sources for that subsystem.
 3. **Configure for board**: Ensure proper SystemVerilog defines are included for target board (`__au280__`, `__au250__`, etc.).
 4. **Create test directory**: Set up `tb/tests/<subsystem>/` with appropriate test cases.
