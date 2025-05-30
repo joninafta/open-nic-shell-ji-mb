@@ -332,9 +332,9 @@ main() {
             exit 1
         fi
         print_summary
+    else
+        print_status "Check-only mode completed successfully!"
     fi
-    
-    print_status "Environment check completed!"
 }
 
 # Run main function with all arguments
