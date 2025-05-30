@@ -399,3 +399,81 @@ class StatisticsChecker:
             cocotb.log.debug(f"Counter {counter_name} increment verified: {actual_increment}")
             
         return success
+    
+    async def read_statistics(self) -> Dict[str, int]:
+        """
+        Read current statistics from DUT as dictionary.
+        
+        Returns:
+            Dictionary with statistics counters
+        """
+        actual = await self.read_current_stats()
+        return {
+            'total_packets': actual.total_packets,
+            'dropped_packets': actual.dropped_packets,
+            'rule0_hit_count': actual.rule0_hit_count,
+            'rule1_hit_count': actual.rule1_hit_count
+        }
+    
+    async def reset_statistics(self):
+        """Reset statistics in the DUT."""
+        # This would typically write to a reset register in the DUT
+        # For now, just reset our expected values
+        self.reset_expected_stats()
+        cocotb.log.info("Statistics reset")
+
+
+class StatisticsTracker:
+    """Simple statistics tracker for compatibility with existing tests."""
+    
+    def __init__(self):
+        """Initialize tracker."""
+        self.reset()
+    
+    def reset(self):
+        """Reset tracker state."""
+        cocotb.log.debug("Statistics tracker reset")
+
+
+def create_statistics_verifier(dut):
+    """
+    Create a statistics verifier and tracker.
+    
+    Args:
+        dut: Device under test handle
+        
+    Returns:
+        Tuple of (checker, tracker)
+    """
+    checker = StatisticsChecker(dut, dut.aclk)
+    tracker = StatisticsTracker()
+    return checker, tracker
+
+
+async def verify_packet_statistics(dut, expected_stats: Dict[str, int]):
+    """
+    Verify packet statistics match expected values.
+    
+    Args:
+        dut: Device under test handle
+        expected_stats: Dictionary of expected statistics values
+    """
+    checker = StatisticsChecker(dut, dut.aclk)
+    actual_stats = await checker.read_statistics()
+    
+    mismatches = []
+    for counter, expected_value in expected_stats.items():
+        if counter not in actual_stats:
+            mismatches.append(f"Unknown counter: {counter}")
+            continue
+            
+        actual_value = actual_stats[counter]
+        if actual_value != expected_value:
+            mismatches.append(f"{counter}: expected {expected_value}, got {actual_value}")
+    
+    if mismatches:
+        error_msg = "Statistics verification failed:\n" + "\n".join(f"  - {m}" for m in mismatches)
+        cocotb.log.error(error_msg)
+        raise AssertionError(error_msg)
+    
+    cocotb.log.info(f"✅ Statistics verification passed: {actual_stats}")

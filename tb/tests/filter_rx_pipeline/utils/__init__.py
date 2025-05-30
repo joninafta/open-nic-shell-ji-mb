@@ -28,7 +28,9 @@ from .axi_stream_monitor import (
 
 from .statistics_checker import (
     StatisticsChecker,
+    StatisticsTracker,
     PerformanceMetrics,
+    create_statistics_verifier,
     verify_packet_statistics
 )
 
@@ -52,6 +54,8 @@ __all__ = [
     
     # Statistics verification
     'StatisticsChecker',
+    'StatisticsTracker', 
     'PerformanceMetrics',
+    'create_statistics_verifier',
     'verify_packet_statistics'
 ]
