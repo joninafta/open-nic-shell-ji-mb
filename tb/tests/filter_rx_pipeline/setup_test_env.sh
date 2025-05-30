@@ -168,25 +168,25 @@ check_simulator() {
     if command -v verilator &> /dev/null; then
         VERILATOR_VERSION=$(verilator --version 2>&1 | head -n1 | awk '{print $2}' 2>/dev/null || echo "unknown")
         print_status "Verilator found: $VERILATOR_VERSION"
-        ((SIMULATORS_FOUND++))
+        SIMULATORS_FOUND=$((SIMULATORS_FOUND + 1))
     fi
     
     # Check for Questa/ModelSim
     if command -v vsim &> /dev/null; then
         print_status "Questa/ModelSim found"
-        ((SIMULATORS_FOUND++))
+        SIMULATORS_FOUND=$((SIMULATORS_FOUND + 1))
     fi
     
     # Check for Xcelium
     if command -v xrun &> /dev/null; then
         print_status "Xcelium found"
-        ((SIMULATORS_FOUND++))
+        SIMULATORS_FOUND=$((SIMULATORS_FOUND + 1))
     fi
     
     # Check for VCS
     if command -v vcs &> /dev/null; then
         print_status "VCS found"
-        ((SIMULATORS_FOUND++))
+        SIMULATORS_FOUND=$((SIMULATORS_FOUND + 1))
     fi
     
     if [[ $SIMULATORS_FOUND -eq 0 ]]; then
@@ -340,6 +340,9 @@ main() {
     else
         print_status "Check-only mode completed successfully!"
     fi
+    
+    # Ensure we exit with success
+    exit 0
 }
 
 # Run main function with all arguments
