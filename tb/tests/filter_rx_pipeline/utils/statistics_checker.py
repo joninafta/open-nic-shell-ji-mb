@@ -51,6 +51,91 @@ class ActualStats:
         )
 
 
+@dataclass
+class PerformanceMetrics:
+    """Performance metrics for throughput and latency measurement."""
+    throughput_gbps: float = 0.0
+    latency_cycles: int = 0
+    packet_rate_mpps: float = 0.0
+    efficiency_percent: float = 0.0
+    total_packets: int = 0
+    total_bytes: int = 0
+    test_duration_seconds: float = 0.0
+    timestamp: float = 0.0
+    
+    @classmethod
+    def calculate_from_test_data(cls, 
+                               packet_count: int, 
+                               total_bytes: int, 
+                               test_duration: float, 
+                               clock_freq_mhz: float = 250.0):
+        """Calculate performance metrics from test data."""
+        # Calculate throughput
+        throughput_mbps = (total_bytes * 8) / (test_duration * 1e6) if test_duration > 0 else 0.0
+        throughput_gbps = throughput_mbps / 1000.0
+        
+        # Calculate packet rate
+        packet_rate_pps = packet_count / test_duration if test_duration > 0 else 0.0
+        packet_rate_mpps = packet_rate_pps / 1e6
+        
+        # Calculate efficiency (theoretical max: 512-bit @ clock_freq_mhz)
+        theoretical_max_gbps = (512 * clock_freq_mhz) / 1000.0
+        efficiency_percent = (throughput_gbps / theoretical_max_gbps) * 100.0 if theoretical_max_gbps > 0 else 0.0
+        
+        return cls(
+            throughput_gbps=throughput_gbps,
+            packet_rate_mpps=packet_rate_mpps,
+            efficiency_percent=efficiency_percent,
+            total_packets=packet_count,
+            total_bytes=total_bytes,
+            test_duration_seconds=test_duration,
+            timestamp=time.time()
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert metrics to dictionary format."""
+        return {
+            'throughput_gbps': self.throughput_gbps,
+            'latency_cycles': self.latency_cycles,
+            'packet_rate_mpps': self.packet_rate_mpps,
+            'efficiency_percent': self.efficiency_percent,
+            'total_packets': self.total_packets,
+            'total_bytes': self.total_bytes,
+            'test_duration_seconds': self.test_duration_seconds,
+            'timestamp': self.timestamp
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]):
+        """Create metrics from dictionary."""
+        return cls(
+            throughput_gbps=data.get('throughput_gbps', 0.0),
+            latency_cycles=data.get('latency_cycles', 0),
+            packet_rate_mpps=data.get('packet_rate_mpps', 0.0),
+            efficiency_percent=data.get('efficiency_percent', 0.0),
+            total_packets=data.get('total_packets', 0),
+            total_bytes=data.get('total_bytes', 0),
+            test_duration_seconds=data.get('test_duration_seconds', 0.0),
+            timestamp=data.get('timestamp', 0.0)
+        )
+    
+    def meets_performance_targets(self, 
+                                min_throughput_gbps: float = 200.0,
+                                max_latency_cycles: int = 10,
+                                min_packet_rate_mpps: float = 100.0) -> bool:
+        """Check if metrics meet performance targets."""
+        return (self.throughput_gbps >= min_throughput_gbps and
+                self.latency_cycles <= max_latency_cycles and
+                self.packet_rate_mpps >= min_packet_rate_mpps)
+    
+    def get_performance_summary(self) -> str:
+        """Get human-readable performance summary."""
+        return (f"Performance: {self.throughput_gbps:.1f} Gbps, "
+               f"{self.latency_cycles} cycles latency, "
+               f"{self.packet_rate_mpps:.1f} Mpps, "
+               f"{self.efficiency_percent:.1f}% efficiency")
+
+
 class StatisticsChecker:
     """Monitors and verifies filter_rx_pipeline statistics counters."""
     
