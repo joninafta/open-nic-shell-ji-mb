@@ -261,6 +261,76 @@ class FilterRxTestbench:
         # Restore ready
         self.dut.m_axis_tready.value = 1
 
+    async def configure_filter(self, config: 'TestConfig'):
+        """
+        Configure filter using TestConfig object.
+        
+        Args:
+            config: TestConfig object with rule configurations
+        """
+        logger.info("Configuring filter from TestConfig")
+        
+        # Convert TestConfig to rules dictionary format
+        rules_config = {}
+        
+        # Rule 0 configuration
+        if config.rule0_enable:
+            rules_config[0] = {
+                "ipv4_addr": config.rule0_ipv4_addr,
+                "ipv6_addr": config.rule0_ipv6_addr,
+                "port": config.rule0_port
+            }
+            
+        # Rule 1 configuration
+        if config.rule1_enable:
+            rules_config[1] = {
+                "ipv4_addr": config.rule1_ipv4_addr,
+                "ipv6_addr": config.rule1_ipv6_addr,
+                "port": config.rule1_port
+            }
+            
+        # Apply the rules configuration
+        await self.configure_rules(rules_config)
+        
+        # Set global configuration bits
+        global_cfg = 0
+        if config.enable_filtering:
+            global_cfg |= (1 << 0)  # Enable filtering
+        if config.enable_statistics:
+            global_cfg |= (1 << 1)  # Enable statistics
+        if config.drop_action:
+            global_cfg |= (1 << 2)  # Drop unmatched packets
+            
+        # Apply global configuration (assuming it's in upper bits of cfg_reg)
+        current_cfg = int(self.dut.cfg_reg.value)
+        updated_cfg = (current_cfg & 0xFFFFFFF8) | global_cfg  # Clear lower 3 bits, set new values
+        self.dut.cfg_reg.value = updated_cfg
+        
+        await ClockCycles(self.dut.aclk, 2)
+        logger.info("Filter configuration complete")
+        
+    async def clear_statistics(self):
+        """Clear all statistics counters."""
+        logger.info("Clearing statistics counters")
+        
+        # Reset statistics by pulsing a control bit (assuming bit 31 of cfg_reg)
+        current_cfg = int(self.dut.cfg_reg.value)
+        
+        # Set clear bit
+        self.dut.cfg_reg.value = current_cfg | (1 << 31)
+        await ClockCycles(self.dut.aclk, 1)
+        
+        # Clear the clear bit
+        self.dut.cfg_reg.value = current_cfg & ~(1 << 31)
+        await ClockCycles(self.dut.aclk, 2)
+        
+        # Reset internal tracking
+        self.packets_sent = 0
+        self.packets_received = 0
+        self.packets_dropped = 0
+        
+        logger.info("Statistics cleared")
+
 
 class TestResult:
     """Container for test results and verification."""
@@ -373,3 +443,70 @@ class CommonRules:
             0: {"ipv4_addr": ipv4_str_to_int("192.168.1.1"), "port": 0, "ipv6_addr": 0},  # Any port
             1: {"ipv4_addr": ipv4_str_to_int("192.168.1.2"), "port": 443, "ipv6_addr": 0}  # Specific port
         }
+
+
+class TestConfig:
+    """Configuration class for test cases."""
+    
+    def __init__(self):
+        """Initialize test configuration with default values."""
+        # Rule 0 configuration
+        self.rule0_ipv4_addr = 0
+        self.rule0_ipv6_addr = 0
+        self.rule0_port = 0
+        self.rule0_enable = True
+        
+        # Rule 1 configuration
+        self.rule1_ipv4_addr = 0
+        self.rule1_ipv6_addr = 0
+        self.rule1_port = 0
+        self.rule1_enable = True
+        
+        # Global configuration
+        self.enable_filtering = True
+        self.enable_statistics = True
+        self.drop_action = True  # True = drop unmatched, False = forward unmatched
+        
+    def to_dict(self) -> dict:
+        """Convert configuration to dictionary format."""
+        return {
+            'rule0': {
+                'ipv4_addr': self.rule0_ipv4_addr,
+                'ipv6_addr': self.rule0_ipv6_addr,
+                'port': self.rule0_port,
+                'enable': self.rule0_enable
+            },
+            'rule1': {
+                'ipv4_addr': self.rule1_ipv4_addr,
+                'ipv6_addr': self.rule1_ipv6_addr,
+                'port': self.rule1_port,
+                'enable': self.rule1_enable
+            },
+            'global': {
+                'enable_filtering': self.enable_filtering,
+                'enable_statistics': self.enable_statistics,
+                'drop_action': self.drop_action
+            }
+        }
+        
+    def from_dict(self, config_dict: dict):
+        """Load configuration from dictionary."""
+        if 'rule0' in config_dict:
+            rule0 = config_dict['rule0']
+            self.rule0_ipv4_addr = rule0.get('ipv4_addr', 0)
+            self.rule0_ipv6_addr = rule0.get('ipv6_addr', 0)
+            self.rule0_port = rule0.get('port', 0)
+            self.rule0_enable = rule0.get('enable', True)
+            
+        if 'rule1' in config_dict:
+            rule1 = config_dict['rule1']
+            self.rule1_ipv4_addr = rule1.get('ipv4_addr', 0)
+            self.rule1_ipv6_addr = rule1.get('ipv6_addr', 0)
+            self.rule1_port = rule1.get('port', 0)
+            self.rule1_enable = rule1.get('enable', True)
+            
+        if 'global' in config_dict:
+            global_config = config_dict['global']
+            self.enable_filtering = global_config.get('enable_filtering', True)
+            self.enable_statistics = global_config.get('enable_statistics', True)
+            self.drop_action = global_config.get('drop_action', True)

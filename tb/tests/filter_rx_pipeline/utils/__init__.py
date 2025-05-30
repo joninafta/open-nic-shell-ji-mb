@@ -6,6 +6,7 @@ This package contains common utilities for testing the Filter RX Pipeline module
 
 from .test_utils import (
     FilterRxTestbench,
+    TestConfig,
     TestResult,
     CommonRules
 )
