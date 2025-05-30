@@ -13,6 +13,7 @@ from .test_utils import (
 
 from .packet_generator import (
     PacketGenerator,
+    ScapyPacketGenerator,
     IPv4PacketTemplate,
     IPv6PacketTemplate,
     UDPPacketTemplate,

@@ -426,3 +426,191 @@ def create_test_scenario_packets() -> dict:
     ]
     
     return scenarios
+
+
+class ScapyPacketGenerator:
+    """Scapy-based packet generator for creating AXI Stream test data."""
+    
+    def __init__(self, data_width: int = 512):
+        """
+        Initialize the Scapy packet generator.
+        
+        Args:
+            data_width: AXI Stream data width in bits (default 512)
+        """
+        self.data_width = data_width
+        self.data_bytes = data_width // 8
+        self.packet_gen = PacketGenerator()
+        
+    def generate_ipv4_packet(self, src_ip: str, dst_ip: str, src_port: int, dst_port: int, 
+                           payload_size: int = 0, protocol: str = "UDP") -> List[Tuple[int, int, bool, int]]:
+        """
+        Generate an IPv4 packet as AXI Stream beats.
+        
+        Args:
+            src_ip: Source IP address
+            dst_ip: Destination IP address  
+            src_port: Source port
+            dst_port: Destination port
+            payload_size: Payload size in bytes
+            protocol: Protocol ("TCP" or "UDP")
+            
+        Returns:
+            List of (tdata, tkeep, tlast, tuser) tuples
+        """
+        config = PacketConfig(
+            ip_version=4,
+            src_ip=src_ip,
+            dst_ip=dst_ip,
+            src_port=src_port,
+            dst_port=dst_port,
+            protocol=protocol,
+            payload_size=payload_size
+        )
+        
+        packet = self.packet_gen.generate_packet(config)
+        return self._packet_to_axi_stream(packet)
+        
+    def generate_ipv6_packet(self, src_ip: str, dst_ip: str, src_port: int, dst_port: int,
+                           payload_size: int = 0, protocol: str = "UDP") -> List[Tuple[int, int, bool, int]]:
+        """
+        Generate an IPv6 packet as AXI Stream beats.
+        
+        Args:
+            src_ip: Source IPv6 address
+            dst_ip: Destination IPv6 address
+            src_port: Source port
+            dst_port: Destination port
+            payload_size: Payload size in bytes
+            protocol: Protocol ("TCP" or "UDP")
+            
+        Returns:
+            List of (tdata, tkeep, tlast, tuser) tuples
+        """
+        config = PacketConfig(
+            ip_version=6,
+            src_ip=src_ip,
+            dst_ip=dst_ip,
+            src_port=src_port,
+            dst_port=dst_port,
+            protocol=protocol,
+            payload_size=payload_size
+        )
+        
+        packet = self.packet_gen.generate_packet(config)
+        return self._packet_to_axi_stream(packet)
+        
+    def generate_tcp_packet(self, src_ip: str, dst_ip: str, src_port: int, dst_port: int,
+                          payload_size: int = 0, ip_version: int = 4) -> List[Tuple[int, int, bool, int]]:
+        """Generate a TCP packet as AXI Stream beats."""
+        config = PacketConfig(
+            ip_version=ip_version,
+            src_ip=src_ip,
+            dst_ip=dst_ip,
+            src_port=src_port,
+            dst_port=dst_port,
+            protocol="TCP",
+            payload_size=payload_size
+        )
+        
+        packet = self.packet_gen.generate_packet(config)
+        return self._packet_to_axi_stream(packet)
+        
+    def generate_udp_packet(self, src_ip: str, dst_ip: str, src_port: int, dst_port: int,
+                          payload_size: int = 0, ip_version: int = 4) -> List[Tuple[int, int, bool, int]]:
+        """Generate a UDP packet as AXI Stream beats."""
+        config = PacketConfig(
+            ip_version=ip_version,
+            src_ip=src_ip,
+            dst_ip=dst_ip,
+            src_port=src_port,
+            dst_port=dst_port,
+            protocol="UDP",
+            payload_size=payload_size
+        )
+        
+        packet = self.packet_gen.generate_packet(config)
+        return self._packet_to_axi_stream(packet)
+        
+    def generate_malformed_packet(self, config: PacketConfig) -> List[Tuple[int, int, bool, int]]:
+        """Generate a malformed packet for edge case testing."""
+        packet = self.packet_gen.generate_packet(config)
+        return self._packet_to_axi_stream(packet)
+        
+    def _packet_to_axi_stream(self, packet: bytes) -> List[Tuple[int, int, bool, int]]:
+        """
+        Convert a packet byte array to AXI Stream beats.
+        
+        Args:
+            packet: Packet as bytes
+            
+        Returns:
+            List of (tdata, tkeep, tlast, tuser) tuples
+        """
+        beats = []
+        packet_len = len(packet)
+        
+        for i in range(0, packet_len, self.data_bytes):
+            # Extract data for this beat
+            beat_data = packet[i:i + self.data_bytes]
+            bytes_in_beat = len(beat_data)
+            
+            # Pad to full width if needed
+            if bytes_in_beat < self.data_bytes:
+                beat_data += b'\x00' * (self.data_bytes - bytes_in_beat)
+                
+            # Convert to integer (little endian)
+            tdata = int.from_bytes(beat_data, byteorder='little')
+            
+            # Create tkeep mask (1 bit per valid byte)
+            tkeep = (1 << bytes_in_beat) - 1
+            
+            # Set tlast on final beat
+            tlast = (i + self.data_bytes >= packet_len)
+            
+            # tuser can carry additional metadata (set to 0 for now)
+            tuser = 0
+            
+            beats.append((tdata, tkeep, tlast, tuser))
+            
+        return beats
+        
+    def create_test_scenario(self, scenario_name: str) -> List[Tuple[PacketConfig, bool]]:
+        """
+        Create a test scenario with multiple packets.
+        
+        Args:
+            scenario_name: Name of the scenario to create
+            
+        Returns:
+            List of (packet_config, should_match) tuples
+        """
+        scenarios = create_test_scenario_packets()
+        
+        if scenario_name not in scenarios:
+            raise ValueError(f"Unknown scenario: {scenario_name}")
+            
+        test_packets = []
+        for config in scenarios[scenario_name]:
+            # Determine if packet should match based on dst_ip and dst_port
+            should_match = self._packet_should_match(config)
+            test_packets.append((config, should_match))
+            
+        return test_packets
+        
+    def _packet_should_match(self, config: PacketConfig) -> bool:
+        """
+        Determine if a packet should match the default filter rules.
+        
+        Default rules:
+        - Rule 0: IPv4 192.168.1.1:80 or IPv6 2001:db8::1:80
+        - Rule 1: IPv4 192.168.1.2:443 or IPv6 2001:db8::2:443
+        """
+        if config.ip_version == 4:
+            return ((config.dst_ip == "192.168.1.1" and config.dst_port == 80) or
+                    (config.dst_ip == "192.168.1.2" and config.dst_port == 443))
+        elif config.ip_version == 6:
+            return ((config.dst_ip == "2001:db8::1" and config.dst_port == 80) or
+                    (config.dst_ip == "2001:db8::2" and config.dst_port == 443))
+        else:
+            return False
