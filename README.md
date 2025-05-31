@@ -1,4 +1,13 @@
 # AMD OpenNIC Shell
+## Status
+
+<!-- CI/CD Badges -->
+![Tests](https://img.shields.io/badge/tests-unknown-lightgrey)
+![Build](https://img.shields.io/badge/build-unknown-lightgrey)
+![Simulator](https://img.shields.io/badge/simulator-verilator-blue)
+<!-- End CI/CD Badges -->
+
+
 
 This is one of the three components of the
 [OpenNIC project](https://github.com/Xilinx/open-nic.git).  The other components are: 
