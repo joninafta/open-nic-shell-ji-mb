@@ -17,7 +17,7 @@ package packet_pkg;
         logic [15:0] eth_type;    // EtherType (0x0800 = IPv4, 0x86DD = IPv6)
     } eth_hdr_t;
 
-    // IPv4 header structure (20 bytes minimum)
+    // IPv4 header structure (20 bytes minimum, padded to match IPv6 size)
     typedef struct packed {
         logic [3:0]  version;     // IP version (4)
         logic [3:0]  ihl;         // Internet Header Length
@@ -31,6 +31,7 @@ package packet_pkg;
         logic [15:0] checksum;    // Header Checksum
         logic [31:0] src_ip;      // Source IP Address
         logic [31:0] dst_ip;      // Destination IP Address
+        logic [159:0] padding;    // Padding to match IPv6 header size (40 bytes total)
     } ipv4_hdr_t;
 
     // IPv6 header structure (40 bytes)
@@ -81,11 +82,11 @@ package packet_pkg;
     } eth_ipv6_pkt_t;
 
     // EtherType constants
-    parameter logic [15:0] ETH_TYPE_IPV4 = 16'h0800;
-    parameter logic [15:0] ETH_TYPE_IPV6 = 16'h86DD;
+    localparam logic [15:0] ETH_TYPE_IPV4 = 16'h0800;
+    localparam logic [15:0] ETH_TYPE_IPV6 = 16'h86DD;
 
     // IP Protocol constants
-    parameter logic [7:0] IP_PROTO_TCP = 8'h06;
-    parameter logic [7:0] IP_PROTO_UDP = 8'h11;
+    localparam logic [7:0] IP_PROTO_TCP = 8'h06;
+    localparam logic [7:0] IP_PROTO_UDP = 8'h11;
 
 endpackage

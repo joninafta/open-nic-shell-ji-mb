@@ -3,7 +3,9 @@
     "opennic-filter-context": {
       "command": "node", 
       "args": ["/Users/jonafta/Dev/open-nic-mcp/build/index.js"],
-      "env": {}
+      "env": {
+        "OPENNIC_PROJECT_ROOT": "/Users/jonafta/Dev/open-nic-shell-ji-mb"
+      }
     }
   }
-}   
+}

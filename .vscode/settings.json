@@ -3,8 +3,8 @@
         "*.sv": "systemverilog",
         "*.v": "verilog"
     },
+    // Remove HTTP-specific environment variables since MCP uses stdio
     "terminal.integrated.env.osx": {
-        "MCP_SERVER_PORT": "3000",
         "OPENNIC_PROJECT_ROOT": "/Users/jonafta/Dev/open-nic-shell-ji-mb"
     },
     "terminal.integrated.shellIntegration.enabled": true,
@@ -14,15 +14,6 @@
         "**/build/**": true,
         "**/vivado_*/**": true,
         "**/.git/**": true
-    },
-    "mcp.servers": {
-        "opennic-filter-context": {
-            "command": "node",
-            "args": ["/Users/jonafta/Dev/open-nic-mcp/build/index.js"],
-            "env": {
-                "NODE_ENV": "development"
-            }
-        }
     },
     "github.copilot.enable": {
         "*": true,

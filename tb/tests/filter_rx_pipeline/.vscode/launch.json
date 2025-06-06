@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Cocotb Test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/test_filter_basic.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "COCOTB_DEBUG": "1",
+                "COCOTB_DEBUG_PORT": "5678"
+            }
+        }
+    ]
+}
