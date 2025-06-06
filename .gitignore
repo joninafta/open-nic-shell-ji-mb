@@ -17,3 +17,23 @@ build
 
 # Ignore simulation products directory
 .sim
+
+# Cocotb simulation build artifacts
+sim_build/
+**/sim_build/
+
+# Python cache files
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Other simulation artifacts
+*.vcd
+*.fst
+*.ghw
+*.jou
+*.log
+*.pb
+*.wdb
+results.xml

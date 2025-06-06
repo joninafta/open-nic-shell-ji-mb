@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "opennic-filter-context": {
+      "command": "node", 
+      "args": ["/Users/jonafta/Dev/open-nic-mcp/build/index.js"],
+      "env": {}
+    }
+  }
+}   
