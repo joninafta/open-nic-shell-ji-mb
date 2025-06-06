@@ -16,10 +16,7 @@
                 "clear": false
             },
             "isBackground": true,
-            "problemMatcher": [],
-            "runOptions": {
-                "runOn": "folderOpen"
-            }
+            "problemMatcher": []
         },
         {
             "label": "Test Filter - Basic",
