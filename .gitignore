@@ -20,13 +20,24 @@ build
 
 # Cocotb simulation artifacts
 sim_build/
+**/sim_build/
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
+*.py[cod]
+*$py.class
+
+# Simulation artifacts
 *.vcd
+*.fst
+*.ghw
 *.wlf
 *.shm/
 *.log
+*.jou
+*.pb
+*.wdb
 transcript
 results.xml
 xcelium.d/
