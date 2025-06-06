@@ -1,0 +1,89 @@
+---
+name: CI/CD Test Issue
+about: Report issues with the automated test pipeline
+title: '[CI/CD] '
+labels: ['ci/cd', 'testing', 'bug']
+assignees: ''
+---
+
+## 🚨 CI/CD Test Issue
+
+### Issue Type
+<!-- Select the type of CI/CD issue -->
+- [ ] Test failure
+- [ ] Pipeline configuration issue
+- [ ] Performance regression
+- [ ] Environment setup problem
+- [ ] Artifact/reporting issue
+- [ ] Other
+
+### Affected Component
+<!-- Select the affected test component -->
+- [ ] Basic functionality tests
+- [ ] Configuration tests
+- [ ] Edge case tests
+- [ ] Performance tests
+- [ ] Protocol compliance tests
+- [ ] Statistics tests
+- [ ] Test infrastructure
+- [ ] CI/CD pipeline
+
+### Environment Details
+- **Branch**: <!-- e.g., main, develop, feature/xyz -->
+- **Commit SHA**: <!-- Full commit hash -->
+- **Simulator**: <!-- verilator, questa, xcelium -->
+- **Test Suite**: <!-- all, basic, config, edge, performance, protocol, stats -->
+- **Platform**: <!-- GitHub Actions, local, other -->
+
+### Issue Description
+<!-- Provide a clear and concise description of the issue -->
+
+### Expected Behavior
+<!-- What should have happened? -->
+
+### Actual Behavior
+<!-- What actually happened? -->
+
+### Reproduction Steps
+<!-- Steps to reproduce the issue -->
+1. 
+2. 
+3. 
+
+### Test Logs
+<!-- Paste relevant test logs, error messages, or link to CI run -->
+```
+<!-- Paste logs here -->
+```
+
+### Performance Data (if applicable)
+<!-- For performance issues, include metrics -->
+- **Throughput**: 
+- **Latency**: 
+- **Packet Rate**: 
+- **Efficiency**: 
+
+### Additional Context
+<!-- Any additional information that might be helpful -->
+
+### Suggested Solution
+<!-- If you have ideas for fixing the issue -->
+
+---
+
+### 🔧 For Maintainers
+
+#### Investigation Checklist
+- [ ] Reproduced locally
+- [ ] Checked recent changes
+- [ ] Verified environment setup
+- [ ] Reviewed test logs
+- [ ] Checked performance baselines
+
+#### Resolution Checklist
+- [ ] Root cause identified
+- [ ] Fix implemented
+- [ ] Fix tested locally
+- [ ] CI/CD pipeline updated (if needed)
+- [ ] Documentation updated (if needed)
+- [ ] Performance baseline updated (if needed)
