@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug MCP Server",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/../open-nic-mcp/build/index.js",
+            "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "development",
+                "DEBUG": "mcp:*"
+            }
+        }
+    ]
+}

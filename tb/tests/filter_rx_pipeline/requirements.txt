@@ -5,13 +5,16 @@
 cocotb>=1.8.0
 cocotb-test>=0.2.4
 
-# Packet manipulation
-scapy>=2.5.0
-
-# Data analysis and testing
+# Testing framework
 pytest>=7.0.0
 pytest-xdist>=3.0.0  # For parallel test execution
 pytest-html>=3.1.0   # For HTML test reports
+
+# Debugging
+debugpy>=1.6.0
+
+# Packet manipulation
+scapy>=2.5.0
 
 # Logging and utilities
 colorlog>=6.7.0

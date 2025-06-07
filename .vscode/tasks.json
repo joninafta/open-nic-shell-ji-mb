@@ -1,0 +1,58 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start MCP Server",
+            "type": "shell",
+            "command": "node",
+            "args": ["/Users/jonafta/Dev/open-nic-mcp/build/index.js"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Test Filter - Basic",
+            "type": "shell", 
+            "command": "curl",
+            "args": [
+                "-X", "POST",
+                "-H", "Content-Type: application/json",
+                "-d", "{\"method\": \"tools/call\", \"params\": {\"name\": \"run-filter-simulation\", \"arguments\": {\"test_type\": \"basic\", \"debug\": true}}}",
+                "http://localhost:3000"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Check Requirements Compliance",
+            "type": "shell",
+            "command": "curl", 
+            "args": [
+                "-X", "POST",
+                "-H", "Content-Type: application/json",
+                "-d", "{\"method\": \"tools/call\", \"params\": {\"name\": \"check-requirements-compliance\", \"arguments\": {\"requirement_type\": \"all\"}}}",
+                "http://localhost:3000"
+            ],
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        }
+    ]
+}
