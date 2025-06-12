@@ -32,8 +32,13 @@ class FilterRxPipelineEnvironment(Component):
         self.dut = dut
         self.config = config
         
-        # Get clock from DUT
-        self.clock = dut.clk
+        # Get clock from DUT (support both 'clk' and 'aclk')
+        if hasattr(dut, "clk"):
+            self.clock = dut.clk
+        elif hasattr(dut, "aclk"):
+            self.clock = dut.aclk
+        else:
+            raise AttributeError("DUT does not provide a 'clk' or 'aclk' signal")
         
         # Initialize components
         self._init_agents()

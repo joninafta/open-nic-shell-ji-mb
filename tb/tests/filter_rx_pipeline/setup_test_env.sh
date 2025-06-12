@@ -84,19 +84,23 @@ check_pip() {
 
 check_virtual_env() {
     print_info "Checking if we're in a virtual environment..."
-    
+
     if [[ "$VIRTUAL_ENV" != "" ]]; then
         print_status "Virtual environment detected: $VIRTUAL_ENV"
     else
-        print_warning "Not in a virtual environment"
-        print_info "Consider using a virtual environment:"
-        echo "  python3 -m venv venv"
-        echo "  source venv/bin/activate"
-        echo ""
-        read -p "Continue without virtual environment? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
+        if [[ "$CI" == "true" || "$GITHUB_ACTIONS" == "true" ]]; then
+            print_warning "Not in a virtual environment (CI mode - continuing)"
+        else
+            print_warning "Not in a virtual environment"
+            print_info "Consider using a virtual environment:"
+            echo "  python3 -m venv venv"
+            echo "  source venv/bin/activate"
+            echo ""
+            read -p "Continue without virtual environment? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
         fi
     fi
 }
