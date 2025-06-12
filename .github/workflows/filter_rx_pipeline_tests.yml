@@ -15,9 +15,6 @@ on:
       - 'tb/tests/filter_rx_pipeline/**'
       - 'filelists/filter_rx_pipeline.f'
       - '.github/workflows/filter_rx_pipeline_tests.yml'
-  schedule:
-    # Run nightly regression tests at 2 AM UTC
-    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_suite:
